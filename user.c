@@ -42,10 +42,6 @@
 
 extern unsigned char flags_status;
 
-// SPI
-//unsigned char SPI_Send[3] = "OK\0";
-unsigned char SPI_Recv[25];
-
 unsigned char sync_mode = 0;
 unsigned char bus_mode = 0;
 unsigned char smp_phase = 0;
@@ -221,7 +217,7 @@ void InitApp(void)
     // Comments:
     // check PTCON0 postscale-reason why pwm timer counts by adding 4?
     // PWMCON1 - spec event trigger postscale (for ADC)
-    //PCPWM init
+    // PCPWM init
     PCPWMConfig0 = PWM_IO_ALL & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
             & PWM_4AND5_INDPEN & PWM_6AND7_INDPEN;
     PCPWMConfig1 = PW_SEVT_POS_1_16 & PW_SEVT_DIR_UP & PW_OP_SYNC;
@@ -256,18 +252,3 @@ void InitApp(void)
     INTCONbits.GIEL = 1;    // zapinam low level interrupty
 
 }
-
-unsigned char Receive_SPI_data(unsigned char length){
-    getsSPI(RX_tab,length);
-
-    return(0);
-}
-
-unsigned char Transmit_SPI_data(unsigned char length){
-    TX_tab[length] = '\0';    // inserting null terminator at tab's end
-                              // (will not be sent)
-    putsSPI(TX_tab);
-
-    return(0);
-}
-

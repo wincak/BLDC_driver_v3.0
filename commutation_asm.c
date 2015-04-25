@@ -144,5 +144,6 @@ pos_6:
 }
 
 void commutate_gen(void){
+    // TODO Regen braking commutation routine
     asm("nop");
 }

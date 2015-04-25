@@ -62,11 +62,6 @@ extern unsigned int PCPWMPeriod;    // Can be 1/4 of dutycycle!! Weird prescaler
 // ADC
 unsigned char ADC_tab[ADC_tab_size];       // A/D result tab
 
-// Conditions
-// try not to use global variables, but function call parameters
-// unsigned int current_current = 0;   // measured motor current
-
-
 // PID
 
 
@@ -101,7 +96,7 @@ void main(void)
                     case mode_motor_CCW: motor_init(CCW); break;
                     case mode_regen_CW: regen_init(CW); break;
                     case mode_regen_CCW: regen_init(CCW); break;
-                    case mode_free_run: /* TODO */ break;
+                    case mode_free_run: /* TODO mode free run */ break;
                     default: motor_halt(); break;
                 }
             }
@@ -130,7 +125,7 @@ void motor_halt(){
 }
 
 // Set dutycycle value for all PWM channels
-void set_dutycycle(unsigned char dtc){
+void set_dutycycle(unsigned int dtc){
     Setdc0pcpwm(dtc);
     Setdc1pcpwm(dtc);
     Setdc2pcpwm(dtc);
@@ -139,7 +134,7 @@ void set_dutycycle(unsigned char dtc){
 
 void motor_init(unsigned char direction){
 
-#ifdef CHARGE_BOOTSTRAPS    /* TODO */
+#ifdef CHARGE_BOOTSTRAPS    /* TODO Bootstrap charging procedure */
     /* Charging bootstraps */
     INTCONbits.GIEH = 0;    // disable interrupts to stop commutation routines
                             // and avoid shortcuts
@@ -169,7 +164,7 @@ void motor_init(unsigned char direction){
 }
 
 void regen_init(unsigned char direction){
-    /* TODO */
+    /* TODO Regen braking initialization*/
     asm("nop");
 }
 
@@ -209,6 +204,20 @@ void SPI_request_update (void){
     }
 }
 
+unsigned char Receive_SPI_data(unsigned char length){
+    getsSPI(RX_tab,length);
+
+    return(0);
+}
+
+unsigned char Transmit_SPI_data(unsigned char length){
+    TX_tab[length] = '\0';    // inserting null terminator at tab's end
+                              // (will not be sent)
+    putsSPI(TX_tab);
+
+    return(0);
+}
+
 void calc_ADC_data (void){
     unsigned char ADC_buffer[ADC_tab_size];
     unsigned int current_buffer;
@@ -234,15 +243,15 @@ void calc_ADC_data (void){
             +HALL_U_OFFSET);
 
     /* Calculate Motor temperature */
-    /* TODO */
+    /* TODO Calculate Motor temperature*/
     Motor_temp = ADC_buffer[ADC_H_MOTOR_TEMP];
 
     /* Calculate Transistor temperature */
-    /* TODO */
+    /* TODO Calculate Transistor temperature */
     Transistor_temp = ADC_buffer[ADC_H_TRANSISTOR_TEMP];
 
     /* Calculate Battery voltage */
-    /* TODO */
+    /* TODO Calculate battery voltage */
     Batt_voltage = ADC_buffer[ADC_H_BATT_VOLTAGE];
 
     /* Update TX_tab data */
@@ -256,6 +265,7 @@ void calc_ADC_data (void){
 }
 
 void PID(void){
-    /* TODO */
+    /* TODO PID regulator */
     asm("nop");
+    set_dutycycle(725); // fixed value for testing purposes
 }

@@ -176,9 +176,9 @@ void SPI_request_update (void);
 void calc_ADC_data (void);
 
 // Dutycycle
-void set_dutycycle(unsigned char dtc);
+void set_dutycycle (unsigned int dtc);
 
-// Commutation
+// Commutation asm routines
 void commutate_mot();   // TODO
 void commutate_gen();   // TODO
 
@@ -188,7 +188,3 @@ void motor_halt();  // stop motor on error
 
 // PID
 void PID(void);
-
-// Commutation asm routines
-void commutate_mot(void);
-void commutate_gen(void);

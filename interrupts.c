@@ -103,7 +103,7 @@ void interrupt low_priority int_low()
 
         LED_RED = 1;
 
-        // tohle bude chtit upravit
+        // TODO change SPI receive interrupt routine
 
         BF_timeout = 50000;   // Aby se necekalo na naplneni bufferu donekonecna
         do{                 // timeout nastaven od oka... 50 us
@@ -124,7 +124,7 @@ void interrupt low_priority int_low()
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){
-        char TX_msg[6] = "Hello\n";
+        char TX_msg[6] = "Hello\0";
         char UART_RX_buf;
 
         // Read the receive register to clear interrupt flag
@@ -134,6 +134,7 @@ void interrupt low_priority int_low()
         UART_RX_buf = ReadUSART();  // and once more to clear the register
 
         putsUSART(TX_msg);
+        WriteUSART('\n');
         WriteUSART('\r');
     }
 #endif
