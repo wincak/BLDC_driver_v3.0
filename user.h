@@ -51,8 +51,8 @@
 #define FLT_T_M     5
 #define FLT_U       4
 #define comm_error  3
-#define motor_mode  flags_status & 0b00000111
-#define flags_error flags_status & 0b01111000
+#define motor_mode  (flags_status & 0b00000111)
+#define flags_error (flags_status & 0b01111000)
 
 // Motor mode definitions
 #define mode_free_run   0b000

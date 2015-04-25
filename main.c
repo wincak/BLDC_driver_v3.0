@@ -87,18 +87,13 @@ void main(void)
 {
     /* Initialize I/O and Peripherals for application */
     InitApp();
-    
+
     do    // main program loop
     {
-        IO_EXT_PORT = !IO_EXT_PORT;
-        LED_RED = !LED_RED;
-
-        asm("nop");
         if(!flags_error & !flag_stop){   // Everything OK?
             // No error
             if(req_motor_mode == motor_mode){
                 // update dutycycle
-                asm("nop");
             }
             else{
                 switch (req_motor_mode){    // change motor mode
@@ -121,8 +116,6 @@ void main(void)
         if(flag_SPI_data_rdy){  // new SPI data?
             SPI_request_update();
         }
-
-        asm("nop");
 
     }while(1);
 
@@ -233,14 +226,12 @@ void calc_ADC_data (void){
 
     /* Calculate motor current */
     // load data
-    LED_RED = 1;
     current_buffer = (ADC_buffer[ADC_H_CURRENT])<<2 | (ADC_buffer[ADC_L_CURRENT]>>6);
     // remove offset (bear in mind voltage loss along copper trace)
     current_buffer = current_buffer - HALL_U_OFFSET;
     // average for one period
     current_current = (((current_buffer*dutycycle)/(4*PCPWMPeriod))
             +HALL_U_OFFSET);
-    LED_RED = 0;
 
     /* Calculate Motor temperature */
     /* TODO */

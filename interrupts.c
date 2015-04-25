@@ -54,7 +54,7 @@ void interrupt int_high()
 
     if(PIR3bits.IC1IF || PIR3bits.IC2QEIF || PIR3bits.IC3DRIF){
         PIR3bits.IC1IF = 0; PIR3bits.IC2QEIF = 0; PIR3bits.IC3DRIF = 0;
-              
+                      
         switch(motor_mode){     // Motor mode check
             case mode_free_run: break;                   // motor off
             case mode_motor_CW: commutate_mot(); break;  // motoring
@@ -124,10 +124,17 @@ void interrupt low_priority int_low()
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){
-        PIR1bits.RCIF = 0;
-        char tx = "a";
+        char TX_msg[6] = "Hello\n";
+        char UART_RX_buf;
 
-        WriteUSART(tx);
+        // Read the receive register to clear interrupt flag
+        while(PIR1bits.RCIF){
+            UART_RX_buf = ReadUSART();
+        }
+        UART_RX_buf = ReadUSART();  // and once more to clear the register
+
+        putsUSART(TX_msg);
+        WriteUSART('\r');
     }
 #endif
 }

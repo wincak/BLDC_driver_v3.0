@@ -116,9 +116,6 @@ void InitApp(void)
     smp_phase = SMPMID;
     OpenSPI(sync_mode,bus_mode,smp_phase );
 
-
-
-
     //**********************   INT2  ******************************************/
     // External interrupt for SPI Slave Select line monitoring
     // Falling Edge detection
@@ -133,21 +130,26 @@ void InitApp(void)
 #ifdef UART_CONTROL
     /***********************   UART  ******************************************/
     TRISCbits.RC5 = 1;  // this pin is connected with TX pin in hardware
-    TRISCbits.RC6 = 0;  // USART TX pin
+    TRISCbits.RC6 = 1;  // USART TX pin
 
     CloseUSART();
 
-    UARTConfig = USART_TX_INT_OFF | USART_RX_INT_ON | USART_ASYNCH_MODE |
-            USART_EIGHT_BIT | USART_CONT_RX | USART_BRGH_HIGH | USART_ADDEN_OFF;
-    spbrg = 21;
-    OpenUSART(UARTConfig, spbrg);
+    TXSTAbits.TXEN = 1;     // UART Transmitter enable
+    TXSTAbits.BRGH = 1;     // High baud rate
+    RCSTAbits.SPEN = 1;     // Serial port enable
+    RCSTAbits.CREN = 1;     // UART Receiver enable
+    BAUDCONbits.BRG16 = 1;  // 16-bit baud rate generator
 
-    baudconfig = BAUD_16_BIT_RATE | BAUD_AUTO_OFF;
-    baudUSART(baudconfig);
+    SPBRG = 21;     // Baud rate divider
+
 
     // Set interrupts once againt, this time for real
     PIE1bits.TXIE = 0;  // USART TX interrupt disable
     PIE1bits.RCIE = 1;  // USART RX interrupt enable
+    IPR1bits.RCIP = 0;  // USART RX interrupt low priority
+
+    // test
+    TRISCbits.RC6 = 1;  // USART TX pin
 
 
 #endif
@@ -202,7 +204,7 @@ void InitApp(void)
     ADCHSbits.SDSEL = 0b01;   // Group D - Battery-voltage (AN7)
     ADCON1bits.FIFOEN = 1;  // FIFO enabled
 
-    PIE1bits.ADIE = 0;      // ADC interrupt: 1-enabled; 0-disabled
+    PIE1bits.ADIE = 1;      // ADC interrupt: 1-enabled; 0-disabled
     PIR1bits.ADIF = 0;      // interrupt flag clear
     IPR1bits.ADIP = 1;      // ADC interrupt priority: 1-high
 
