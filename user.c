@@ -25,10 +25,16 @@
 
 #endif
 
+#include "user.h"
+#include "system.h"
+
 #include <plib/pcpwm.h>
 #include <plib/spi.h>
 #include <plib/timers.h>
-#include "user.h"
+#ifdef UART_CONTROL
+    #include <plib/usart.h>
+#endif
+
 
 /******************************************************************************/
 /* Variables                                                                  */
@@ -44,6 +50,20 @@ unsigned char sync_mode = 0;
 unsigned char bus_mode = 0;
 unsigned char smp_phase = 0;
 unsigned char w = 0;
+
+#ifdef UART_CONTROL
+unsigned char UARTConfig = 0;
+unsigned char spbrg = 0;
+unsigned char baudconfig = 0;
+#endif
+
+// PCPWM
+unsigned char PCPWMConfig0 = 0;
+unsigned char PCPWMConfig1 = 0;
+unsigned char PCPWMConfig2 = 0;
+unsigned char PCPWMConfig3 = 0;
+unsigned int PCPWMPeriod = 0;
+unsigned int PCPWMSptime = 0;
 
 // Timer 0
 unsigned char TMR0Config = 0;
@@ -70,7 +90,15 @@ void InitApp(void)
     /* Set "online" flag */
     setbit(flags_status,online);
 
+    /********************  VSTUPY/VYSTUPY  ************************************/
+    TRISCbits.RC3 = 0;    // LED2 output (RED)
+    TRISDbits.RD0 = 0;    // LED1 output (GREEN)
 
+    ANSEL0 = 0b11100010;    // analog input settings
+
+    IO_EXT_TRIS = 0;    // debugging output
+
+#ifndef UART_CONTROL
     /***********************   SPI   ******************************************/
     TRISDbits.RD1 = 0;      // serial data out
 
@@ -89,6 +117,8 @@ void InitApp(void)
     OpenSPI(sync_mode,bus_mode,smp_phase );
 
 
+
+
     //**********************   INT2  ******************************************/
     // External interrupt for SPI Slave Select line monitoring
     // Falling Edge detection
@@ -98,7 +128,27 @@ void InitApp(void)
     INTCON3bits.INT2IP = 0;     // INT2 low priority
     INTCON3bits.INT2IF = 0;     // INT2 interrupt flag clear
     INTCON3bits.INT2IE = 1;     // INT2 enable
+#endif
 
+#ifdef UART_CONTROL
+    /***********************   UART  ******************************************/
+    TRISCbits.RC5 = 1;  // this pin is connected with TX pin in hardware
+    TRISCbits.RC6 = 0;  // USART TX pin
+
+    CloseUSART();
+
+    UARTConfig = USART_TX_INT_OFF | USART_RX_INT_ON | USART_ASYNCH_MODE |
+            USART_EIGHT_BIT | USART_CONT_RX | USART_BRGH_HIGH | USART_ADDEN_OFF;
+    spbrg = 21;
+    OpenUSART(UARTConfig, spbrg);
+
+    baudconfig = BAUD_16_BIT_RATE | BAUD_AUTO_OFF;
+    baudUSART(baudconfig);
+
+    PIE1bits.RCIE = 1;  // USART RX interrupt enable
+
+
+#endif
     /***********************  INPUT CAPTURE  **********************************/
 
     // Noise filter (3xCLK)
@@ -142,17 +192,17 @@ void InitApp(void)
                                 // see PCPWM init for timing advance and scaler
 
     ADCON0bits.ACSCH = 1;   // Multi-Channel mode
-    ADCON0bits.ACMOD = 11;  // Simultaneous conversion sequence GA+GB, GC+GD
+    ADCON0bits.ACMOD = 0b11;  // Simultaneous conversion sequence GA+GB, GC+GD
 
-    ADCHSbits.SASEL = 10;   // Group A - Current-sense (AN8)
-    ADCHSbits.SBSEL = 00;   // Group B - Motor-temp (AN1)
-    ADCHSbits.SCSEL = 01;   // Group C - Transistor-temp (AN6)
-    ADCHSbits.SDSEL = 01;   // Group D - Battery-voltage (AN7)
+    ADCHSbits.SASEL = 0b10;   // Group A - Current-sense (AN8)
+    ADCHSbits.SBSEL = 0b00;   // Group B - Motor-temp (AN1)
+    ADCHSbits.SCSEL = 0b01;   // Group C - Transistor-temp (AN6)
+    ADCHSbits.SDSEL = 0b01;   // Group D - Battery-voltage (AN7)
     ADCON1bits.FIFOEN = 1;  // FIFO enabled
 
-    PIE1bits.ADIE = 1;      // ADC interrupt: 1-enabled; 0-disabled
+    PIE1bits.ADIE = 0;      // ADC interrupt: 1-enabled; 0-disabled
     PIR1bits.ADIF = 0;      // interrupt flag clear
-    IPR1bits.ADIP = 1;      // ADC interrupt priority: 0-low
+    IPR1bits.ADIP = 1;      // ADC interrupt priority: 1-high
 
     ADCON0bits.ADON = 1;    // ADC On
 
@@ -162,6 +212,33 @@ void InitApp(void)
     TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_32;
     OpenTimer0(TMR0Config);
     INTCON2bits.TMR0IP = 1;     // high priority interrupt
+
+    /***********************  PCPWM  ******************************************/
+    // Comments:
+    // check PTCON0 postscale-reason why pwm timer counts by adding 4?
+    // PWMCON1 - spec event trigger postscale (for ADC)
+    //PCPWM init
+    PCPWMConfig0 = PWM_IO_ALL & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
+            & PWM_4AND5_INDPEN & PWM_6AND7_INDPEN;
+    PCPWMConfig1 = PW_SEVT_POS_1_16 & PW_SEVT_DIR_UP & PW_OP_SYNC;
+    PCPWMConfig2 = PT_POS_1_4 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
+    PCPWMConfig3 = PT_ENABLE & PT_CNT_UP;   // warn: this is correct,
+                                            // comment in plib is wrong
+    PCPWMPeriod = 0x00FF;   // Perioda PWM: 10MHz, 0x00FF, UPDN => 4.7kHz
+                            // 10 MHz, 0x00FF, FREE_RUN => 9.8 kHz
+    PCPWMSptime = 0x01; // 0x01 means trigger for A/D conversion right in
+                        // the middle of PWM pulse
+
+    set_dutycycle(0);
+
+    Openpcpwm(PCPWMConfig0, PCPWMConfig1, PCPWMConfig2, PCPWMConfig3,
+            PCPWMPeriod, PCPWMSptime);
+
+    TRISBbits.RB2 = 1;  // channel 7 & 8 pins
+    TRISBbits.RB3 = 1;  // set as output
+
+    PIE3bits.PTIE = 0;  // PWM time base interrupt enable/disable
+    PIR3bits.PTIF = 0;  // PWM time base interrupt clear
 
     /*******************  INTERRUPTS  *****************************************/
 

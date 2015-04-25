@@ -51,9 +51,10 @@ unsigned int BF_timeout;
 /* High-priority service */
 void interrupt int_high()
 {
+
     if(PIR3bits.IC1IF || PIR3bits.IC2QEIF || PIR3bits.IC3DRIF){
         PIR3bits.IC1IF = 0; PIR3bits.IC2QEIF = 0; PIR3bits.IC3DRIF = 0;
-
+              
         switch(motor_mode){     // Motor mode check
             case mode_free_run: break;                   // motor off
             case mode_motor_CW: commutate_mot(); break;  // motoring
@@ -63,7 +64,7 @@ void interrupt int_high()
             default: motor_halt(); break;                // error, stop
         }
     }
-    else if(PIR1bits.ADIF){
+    else if(PIR1bits.ADIF && PIE1bits.ADIE){
         PIR1bits.ADIF = 0;
 
         asm("movff  ADRESL, _lbuf");    // Current-sense (low byte)
@@ -86,8 +87,9 @@ void interrupt int_high()
     }
     else if(INTCONbits.TMR0IF && INTCONbits.TMR0IE){
         INTCONbits.TMR0IF = 0;
-
+#ifndef UART_CONTROL
         setbit(flags_status,comm_error);  // comm_error flag set
+#endif
         LED_GREEN = !LED_GREEN;         // Green LED blink
     }
 
@@ -98,6 +100,8 @@ void interrupt low_priority int_low()
 {
     if(INTCON3bits.INT2IF && INTCON3bits.INT2IE){
         INTCON3bits.INT2IF = 0;
+
+        LED_RED = 1;
 
         // tohle bude chtit upravit
 
@@ -115,5 +119,15 @@ void interrupt low_priority int_low()
         WriteTimer0(0x0000);                // SPI timeout timer clear
         clrbit(flags_status,comm_error);    // comm_err flag clear
         LED_GREEN = 1;
+
+        LED_RED = 0;
     }
+#ifdef UART_CONTROL
+    else if(PIR1bits.RCIF && PIE1bits.RCIE){
+        PIR1bits.RCIF = 0;
+        char tx = "a";
+
+        WriteUSART(tx);
+    }
+#endif
 }

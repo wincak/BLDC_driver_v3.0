@@ -27,6 +27,7 @@
 
 #include "system.h"        /* System funct/params, like osc/peripheral config */
 #include "user.h"          /* User funct/params, such as InitApp */
+#include <plib/delays.h>
 
 /******************************************************************************/
 /* User Global Variable Declaration                                           */
@@ -34,10 +35,10 @@
 
 // Flags
 volatile unsigned char flags_status;    // status flag word
-bit flag_stop;                          // stop motor
-bit flag_ADC_data_rdy;                  // ADC conversion complete
-bit flag_SPI_data_rdy;                  // new SPI data recieved
-// bit flag_veloc_rdy;                     // velocity meas. ready (not used)
+bit flag_stop = 0 ;                         // stop motor
+bit flag_ADC_data_rdy = 0;                  // ADC conversion complete
+bit flag_SPI_data_rdy = 0;                  // new SPI data recieved
+// bit flag_veloc_rdy;                      // velocity meas. ready (not used)
 
 // Requests
 unsigned char req_current = 0;
@@ -86,11 +87,11 @@ void main(void)
 {
     /* Initialize I/O and Peripherals for application */
     InitApp();
-
-
-    while(1)    // main program loop
+    
+    do    // main program loop
     {
-        if(!flags_error & !flag_stop){   // Everything OK?
+        asm("nop");
+        if(!(flags_status & 0b01111000) & !flag_stop){   // Everything OK?
             // No error
             if(req_motor_mode == motor_mode){
                 // update dutycycle
@@ -112,15 +113,15 @@ void main(void)
         if(flag_ADC_data_rdy){  // new A/D data?
             calc_ADC_data();
             PID();
-            TX_tab_update;
         }
 
         if(flag_SPI_data_rdy){  // new SPI data?
-            request_update();
+            SPI_request_update();
         }
 
+        asm("nop");
 
-    }
+    }while(1);
 
 }
 
@@ -171,15 +172,20 @@ void motor_init(unsigned char direction){
     else motor_halt();
 }
 
+void regen_init(unsigned char direction){
+    /* TODO */
+    asm("nop");
+}
+
 void SPI_request_update (void){
     unsigned char buff = 0;
 
     /* Load Current request value */
-    req_current = RX_tab[0];
+    req_current = RX_tab[RX_CURRENT_REQ];
 
     /* Load motor mode request */
     // TODO: add regen braking
-    buff = RX_tab[1];
+    buff = RX_tab[RX_MOTOR_MODE];
     switch(buff){   // set appropriate motor mode bits
         case SPI_free_run : {   // free run requested
             clrbit(flags_status,2);
@@ -224,25 +230,38 @@ void calc_ADC_data (void){
 
     /* Calculate motor current */
     // load data
-    current_buffer = (ADC_buffer[H_CURRENT])<<2 | (ADC_buffer[L_CURRENT]>>6);
+    LED_RED = 1;
+    current_buffer = (ADC_buffer[ADC_H_CURRENT])<<2 | (ADC_buffer[ADC_L_CURRENT]>>6);
     // remove offset (bear in mind voltage loss along copper trace)
     current_buffer = current_buffer - HALL_U_OFFSET;
     // average for one period
     current_current = (((current_buffer*dutycycle)/(4*PCPWMPeriod))
             +HALL_U_OFFSET);
+    LED_RED = 0;
 
     /* Calculate Motor temperature */
     /* TODO */
-    Motor_temp = ADC_buffer[H_MOTOR_TEMP];
+    Motor_temp = ADC_buffer[ADC_H_MOTOR_TEMP];
 
     /* Calculate Transistor temperature */
     /* TODO */
-    Transistor_temp = ADC_buffer[H_TRANSISTOR_TEMP];
+    Transistor_temp = ADC_buffer[ADC_H_TRANSISTOR_TEMP];
 
     /* Calculate Battery voltage */
     /* TODO */
-    Batt_voltage = ADC_buffer[H_BATT_VOLTAGE];
+    Batt_voltage = ADC_buffer[ADC_H_BATT_VOLTAGE];
 
+    /* Update TX_tab data */
+    TX_tab[TX_H_CURRENT] = (current_current>>8) & 0x0003;
+    TX_tab[TX_L_CURRENT] = current_current & 0x00FF;
 
+    TX_tab[TX_TRANSISTOR_TEMP] = Transistor_temp;
+    TX_tab[TX_MOTOR_TEMP] = Motor_temp;
+    TX_tab[TX_BATT_VOLTAGE] = Batt_voltage;
 
+}
+
+void PID(void){
+    /* TODO */
+    asm("nop");
 }

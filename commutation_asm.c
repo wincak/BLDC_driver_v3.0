@@ -23,6 +23,15 @@
 /* Variables                                                                  */
 /******************************************************************************/
 
+// Tab of possible rotation hall sensor combinations
+unsigned char hall_cur = 0;             // current combination
+unsigned char hall_pos1 = 0b00010000;
+unsigned char hall_pos2 = 0b00011000;
+unsigned char hall_pos3 = 0b00001000;
+unsigned char hall_pos4 = 0b00001100;
+unsigned char hall_pos5 = 0b00000100;
+unsigned char hall_pos6 = 0b00010100;
+
 extern unsigned char flags_status;
 extern unsigned char hall_cur;
 
@@ -31,13 +40,13 @@ extern unsigned char hall_cur;
 /******************************************************************************/
 
 void commutate_mot(void){
-    hall_cur = PORTA & HALL_MASK
+    hall_cur = PORTA & HALL_MASK;
 
 #asm
 
 com_cw:
     btfsc   _flags_status,1  ; Motor mode xx1 ?
-        bra kom_rev         ; reverse
+        bra com_rev         ; reverse
 
 rot1_cw:
     movf    _hall_pos1,w
@@ -131,6 +140,7 @@ pos_6:
     movff   _pos6,OVDCOND
     return
 #endasm
+
 }
 
 void commutate_gen(void){

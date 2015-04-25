@@ -43,6 +43,9 @@
 /* Bootstrap charging enable */
 //#define CHARGE_BOOTSTRAPS
 
+/* UART control */
+#define UART_CONTROL
+
 
 /******************************************************************************/
 /* System Function Prototypes                                                 */

@@ -71,21 +71,33 @@
 #define FLT_EXT_PORT    PORTDbits.RD4
 
 // SPI
-#define TX_tab_size     9   // 8 data + 1 null
+#define TX_tab_size     9   // 8 data + 1 null terminator
+#define TX_DTC              0
+#define TX_CURR_REQ         1
+#define TX_H_CURRENT        2
+#define TX_L_CURRENT        3
+#define TX_TRANSISTOR_TEMP  4
+#define TX_MOTOR_TEMP       5
+#define TX_BATT_VOLTAGE     6
+#define TX_STATUS_BYTE      7
+
 #define RX_tab_size     2   // 2 data
+#define RX_CURRENT_REQ      0
+#define RX_MOTOR_MODE       1
+
 #define SPI_free_run    0
 #define SPI_CW          0x08
 #define SPI_CCW         0x01
 #define SPI_regen       0x11    // change this!
-#define SPI_brake       0x12    // this tooss!
+#define SPI_brake       0x12    // this too!
 
 // ADC
-#define ADC_tab_size        8
-#define H_CURRENT           0
-#define L_CURRENT           1
-#define H_MOTOR_TEMP        2
-#define H_TRANSISTOR_TEMP   4
-#define H_BATT_VOLTAGE      6
+#define ADC_tab_size            8
+#define ADC_H_CURRENT           0
+#define ADC_L_CURRENT           1
+#define ADC_H_MOTOR_TEMP        2
+#define ADC_H_TRANSISTOR_TEMP   4
+#define ADC_H_BATT_VOLTAGE      6
 
 /******************************************************************************/
 /* User Variables initialization                                              */
@@ -158,6 +170,10 @@ void InitApp(void);         /* I/O and Peripheral Initialization */
 // SPI
 unsigned char Receive_SPI_data(unsigned char length);
 unsigned char Transmit_SPI_data(unsigned char length);
+void SPI_request_update (void);
+
+// ADC
+void calc_ADC_data (void);
 
 // Dutycycle
 void set_dutycycle(unsigned char dtc);
@@ -166,8 +182,12 @@ void set_dutycycle(unsigned char dtc);
 void commutate_mot();   // TODO
 void commutate_gen();   // TODO
 
+void motor_init(unsigned char direction);
+void regen_init(unsigned char direction);
 void motor_halt();  // stop motor on error
 
+// PID
+void PID(void);
 
 // Commutation asm routines
 void commutate_mot(void);
