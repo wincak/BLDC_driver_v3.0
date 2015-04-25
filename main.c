@@ -90,8 +90,11 @@ void main(void)
     
     do    // main program loop
     {
+        IO_EXT_PORT = !IO_EXT_PORT;
+        LED_RED = !LED_RED;
+
         asm("nop");
-        if(!(flags_status & 0b01111000) & !flag_stop){   // Everything OK?
+        if(!flags_error & !flag_stop){   // Everything OK?
             // No error
             if(req_motor_mode == motor_mode){
                 // update dutycycle

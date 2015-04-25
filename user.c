@@ -145,6 +145,8 @@ void InitApp(void)
     baudconfig = BAUD_16_BIT_RATE | BAUD_AUTO_OFF;
     baudUSART(baudconfig);
 
+    // Set interrupts once againt, this time for real
+    PIE1bits.TXIE = 0;  // USART TX interrupt disable
     PIE1bits.RCIE = 1;  // USART RX interrupt enable
 
 
