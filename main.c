@@ -96,7 +96,7 @@ void main(void)
                     case mode_motor_CCW: motor_init(CCW); break;
                     case mode_regen_CW: regen_init(CW); break;
                     case mode_regen_CCW: regen_init(CCW); break;
-                    case mode_free_run: /* TODO mode free run */ break;
+                    case mode_free_run: free_run_init(); break;
                     default: motor_halt(); break;
                 }
             }
@@ -133,6 +133,9 @@ void set_dutycycle(unsigned int dtc){
 }
 
 void motor_init(unsigned char direction){
+    unsigned char USART_CW_msg[] = "CW  \r";
+    unsigned char USART_CCW_msg[] = "CCW \r";
+
 
 #ifdef CHARGE_BOOTSTRAPS    /* TODO Bootstrap charging procedure */
     /* Charging bootstraps */
@@ -141,6 +144,13 @@ void motor_init(unsigned char direction){
 
 #endif
     if(direction == CW){    // init CW commutation
+        putsUSART((char *)USART_CW_msg);
+
+        // change motor mode bits
+        clrbit(flags_status,2);
+        clrbit(flags_status,1);
+        setbit(flags_status,0);
+
         OVDCONS = 0;
         if(!HALL_A & !HALL_B & HALL_C) OVDCOND = pos1;
         else if(!HALL_A & HALL_B & HALL_C) OVDCOND = pos2;
@@ -148,9 +158,16 @@ void motor_init(unsigned char direction){
         else if(HALL_A & HALL_B & !HALL_C) OVDCOND = pos4;
         else if(HALL_A & !HALL_B & !HALL_C) OVDCOND = pos5;
         else if(HALL_A & !HALL_B & HALL_C) OVDCOND = pos6;
-        else OVDCOND = 0;   // error
+        //else motor_halt();   // error
     }
     else if(direction == CCW){  // init CCW commutation
+        putsUSART((char *)USART_CCW_msg);
+
+        // change motor mode bits
+        clrbit(flags_status,2);
+        setbit(flags_status,1);
+        clrbit(flags_status,0);
+
         OVDCONS = 0;
         if(!HALL_A & !HALL_B & HALL_C) OVDCOND = pos4;
         else if(!HALL_A & HALL_B & HALL_C) OVDCOND = pos5;
@@ -158,7 +175,7 @@ void motor_init(unsigned char direction){
         else if(HALL_A & HALL_B & !HALL_C) OVDCOND = pos1;
         else if(HALL_A & !HALL_B & !HALL_C) OVDCOND = pos2;
         else if(HALL_A & !HALL_B & HALL_C) OVDCOND = pos3;
-        else OVDCOND = 0;// error
+        //else motor_halt();// error
     }
     else motor_halt();
 }
@@ -166,6 +183,22 @@ void motor_init(unsigned char direction){
 void regen_init(unsigned char direction){
     /* TODO Regen braking initialization*/
     asm("nop");
+}
+
+void free_run_init(){
+    unsigned char USART_free_run_msg[] = "FREE\r";
+
+    // Power off the motor
+    OVDCOND = 0;
+    set_dutycycle(0);
+
+    // Change motor mode bits
+    clrbit(flags_status,2);
+    clrbit(flags_status,1);
+    clrbit(flags_status,0);
+
+    putsUSART((char *)USART_free_run_msg);
+
 }
 
 void SPI_request_update (void){
@@ -179,27 +212,16 @@ void SPI_request_update (void){
     buff = RX_tab[RX_MOTOR_MODE];
     switch(buff){   // set appropriate motor mode bits
         case SPI_free_run : {   // free run requested
-            clrbit(flags_status,2);
-            clrbit(flags_status,1);
-            clrbit(flags_status,0);
-            break;
+            req_motor_mode = mode_free_run; break;
         }
         case SPI_CW: {          // motor CW requested
-            clrbit(flags_status,2);
-            clrbit(flags_status,1);
-            setbit(flags_status,0);
-            break;
+            req_motor_mode = mode_motor_CW; break;
         }
         case SPI_CCW : {         // motor CCW requested
-            clrbit(flags_status,2);
-            setbit(flags_status,1);
-            clrbit(flags_status,0);
-            break;
+            req_motor_mode = mode_motor_CCW; break;
         }
         default : {             // unknown command
-            clrbit(flags_status,2);
-            clrbit(flags_status,1);
-            clrbit(flags_status,0);
+            req_motor_mode = mode_free_run; motor_halt(); break;
         }
     }
 }

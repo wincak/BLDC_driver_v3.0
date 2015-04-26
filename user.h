@@ -184,6 +184,7 @@ void commutate_gen();   // TODO
 
 void motor_init(unsigned char direction);
 void regen_init(unsigned char direction);
+void free_run_init();
 void motor_halt();  // stop motor on error
 
 // PID

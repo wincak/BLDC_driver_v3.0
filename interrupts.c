@@ -43,6 +43,10 @@ unsigned char hbuf, lbuf;           // fast ASM decode variables
 // Timeout
 unsigned int BF_timeout;
 
+// Requests
+extern unsigned char req_current;
+extern unsigned char req_motor_mode;
+
 
 /******************************************************************************/
 /* Interrupt Routines                                                         */
@@ -54,7 +58,7 @@ void interrupt int_high()
 
     if(PIR3bits.IC1IF || PIR3bits.IC2QEIF || PIR3bits.IC3DRIF){
         PIR3bits.IC1IF = 0; PIR3bits.IC2QEIF = 0; PIR3bits.IC3DRIF = 0;
-                      
+
         switch(motor_mode){     // Motor mode check
             case mode_free_run: break;                   // motor off
             case mode_motor_CW: commutate_mot(); break;  // motoring
@@ -124,18 +128,28 @@ void interrupt low_priority int_low()
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){
-        char TX_msg[6] = "Hello\0";
-        char UART_RX_buf;
+        //char TX_msg[6] = "Hello\0";
+        char UART_RX_buff;
 
         // Read the receive register to clear interrupt flag
         while(PIR1bits.RCIF){
-            UART_RX_buf = ReadUSART();
-        }
-        UART_RX_buf = ReadUSART();  // and once more to clear the register
+            UART_RX_buff = ReadUSART();
 
-        putsUSART(TX_msg);
-        WriteUSART('\n');
-        WriteUSART('\r');
+            switch(UART_RX_buff){   // set appropriate motor mode bits
+                case ' ' : {   // free run requested
+                    req_motor_mode = mode_free_run; break;
+                }
+                case 'w': {          // motor CW requested
+                    req_motor_mode = mode_motor_CW; break;
+                }
+                case 's' : {         // motor CCW requested
+                    req_motor_mode = mode_motor_CCW; break;
+                }
+            }
+        }
+        //putsUSART(TX_msg);
+        //WriteUSART('\n');
+        //WriteUSART('\r');
     }
 #endif
 }

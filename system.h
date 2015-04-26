@@ -36,6 +36,7 @@
 /* PWM definitions */
 #define DTC_min     0       // change!
 #define DTC_max     1000    // change!
+#define DTC_step    50      // change! (for USART debug)
 
 /* Hall rotation sensor mask */
 #define HALL_MASK   0b00011100

@@ -125,6 +125,8 @@ void InitApp(void)
 
 #ifdef UART_CONTROL
     /***********************   UART  ******************************************/
+    unsigned char UART_start_msg[] = "UART ONLINE\n";
+
     TRISCbits.RC5 = 1;  // this pin is connected with TX pin in hardware
     TRISCbits.RC6 = 1;  // USART TX pin
 
@@ -147,6 +149,10 @@ void InitApp(void)
     // test
     TRISCbits.RC6 = 1;  // USART TX pin
 
+    // Startup message
+    while(BusyUSART());
+    putsUSART((char *)UART_start_msg);
+    WriteUSART('\r');
 
 #endif
     /***********************  INPUT CAPTURE  **********************************/
