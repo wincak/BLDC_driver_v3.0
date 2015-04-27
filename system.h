@@ -26,12 +26,18 @@
 #endif
 #define FCY             SYS_FREQ/4
 
+/* Data type limits */
+// useless? yeah, but better to see where that number came from
+#define CHAR_MAX    255
+#define INT_MAX     1023
+
 /* ADC condition definitions */
 // Microcontroller input voltage
 //#define VCC     3.3   // fs <= 10MHz only
-#define VCC     5       // Use SPI voltage level shift!
-// Current Hall Sensor Offset
-#define HALL_U_OFFSET   511
+#define VCC     4.7       // Use SPI voltage level shift!
+#define HALL_U_OFFSET   511     // Current Hall Sensor Offset
+#define KELVIN_OFFSET   273     // 0°C ~ 273K
+#define BATT_V_DIVIDER  (3.9/(12+3.9))    // Battery voltage sense divider
 
 /* Hall rotation sensor mask */
 #define HALL_MASK   0b00011100
@@ -50,11 +56,14 @@
 /* Current limit */
 #define I_MAX   5   // Max current in Amps
 
-/* Data type limits */
-// useless? yeah, but better to see where that number came from
-#define CHAR_MAX    255
-#define INT_MAX     1023
+/* Status LED definitions */
+#define LED_GREEN   LATDbits.LD0
+#define LED_RED     LATCbits.LC3
 
+/* Motor rotation hall sensors */
+#define HALL_A      PORTAbits.RA2
+#define HALL_B      PORTAbits.RA3
+#define HALL_C      PORTAbits.RA4
 
 /******************************************************************************/
 /* System Function Prototypes                                                 */

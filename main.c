@@ -24,6 +24,7 @@
 #include <stdbool.h>       /* For true/false definition */
 #include <stdlib.h>        /* abs() */
 #include <stdio.h>         /* sprintf() */
+#include <float.h>
 
 #endif
 
@@ -67,6 +68,10 @@ extern unsigned int PCPWMPeriod;    // Can be 1/4 of dutycycle!! Weird prescaler
 
 // ADC
 unsigned char ADC_tab[ADC_tab_size];       // A/D result tab
+float LM335_ADC_8bittoV;        // for 8bit A/D result->voltage translation
+float Thermistor_ADC_8bittoV;
+float BATT_ADC_8bittoV;
+
 
 // PID
 unsigned char prescaler = 100;
@@ -91,7 +96,7 @@ void main(void)
     InitApp();
 
     /* Calculate constants */
-    TabGen();
+    //TabGen();     // required too much memory...
 
     do    // main program loop
     {
@@ -263,8 +268,8 @@ void calc_ADC_data (void){
     unsigned int current_buffer;
     unsigned int current_current;
     // bit current_current_direction;
-    unsigned char Motor_temp;
-    unsigned char Transistor_temp;
+    char Motor_temp;
+    char Transistor_temp;
     unsigned char Batt_voltage;
     int count;
 
@@ -285,19 +290,39 @@ void calc_ADC_data (void){
     status.current = current_current;
 
     /* Calculate Motor temperature */
-    /* TODO Calculate Motor temperature*/
+    /* TODO: Find out motor thermistor coefficients */
     Motor_temp = ADC_buffer[ADC_H_MOTOR_TEMP];
+    Motor_temp = (char)(Motor_temp*Thermistor_ADC_8bittoV);
     status.motor_temp = Motor_temp;
+#ifdef MOTOR_TEMP_DEBUG
+    char USART_m_temp_msg[12];
+    sprintf(USART_m_temp_msg,"T_TEMP:%d\n\r",status.motor_temp);
+    putsUSART((char *)USART_m_temp_msg);
+#endif
 
     /* Calculate Transistor temperature */
-    /* TODO Calculate Transistor temperature */
     Transistor_temp = ADC_buffer[ADC_H_TRANSISTOR_TEMP];
+    Transistor_temp = (char)(Transistor_temp*LM335_ADC_8bittoV)-KELVIN_OFFSET;
     status.transistor_temp = Transistor_temp;
+#ifdef TRANSISTOR_TEMP_DEBUG
+    char USART_t_temp_msg[10];
+    sprintf(USART_t_temp_msg,"T_TEMP:%d\n\r",status.transistor_temp);
+    putsUSART((char *)USART_t_temp_msg);
+#endif
+    IO_EXT_PORT = 1;
 
     /* Calculate Battery voltage */
     /* TODO Calculate battery voltage */
     Batt_voltage = ADC_buffer[ADC_H_BATT_VOLTAGE];
+    Batt_voltage = (char)(Batt_voltage*BATT_ADC_8bittoV);
     status.batt_voltage = Batt_voltage;
+    IO_EXT_PORT = 0;
+
+#ifdef BATT_VOLTAGE_DEBUG
+    char USART_batt_V_msg[10];
+    sprintf(USART_batt_V_msg,"BATT:%d\n\r",status.batt_voltage);
+    putsUSART((char *)USART_batt_V_msg);
+#endif
 
     /* Update TX_tab data */
     TX_tab[TX_H_CURRENT] = (current_current>>8) & 0x0003;
@@ -311,9 +336,7 @@ void calc_ADC_data (void){
 
 void PID(void){
     /* TODO PID regulator */
-    char USART_dtc_msg[10];
-
-
+    
     // Begin Makeshift linear regulator
     if(abs(req_current-status.current) >= 5){ // error big enough?
         if(status.current < req_current){ // increase current
@@ -325,6 +348,8 @@ void PID(void){
                 set_dutycycle(dutycycle - DTC_step);
         }
         else set_dutycycle(0);    // something went wrong, abort
+#ifdef PID_DEBUG
+        char USART_dtc_msg[10];
 
         sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
         putsUSART((char *)USART_dtc_msg);
@@ -334,6 +359,7 @@ void PID(void){
 
         sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
         putsUSART((char *)USART_dtc_msg);
+#endif
 
     }
 

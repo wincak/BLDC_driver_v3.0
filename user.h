@@ -18,15 +18,6 @@
 #define flipbit(x,n) ((x) ^= 1UL<<(n))
 #define testbit(x,n) (!!((x)&1UL<<(n)))     // check optimalization
 
-// Status LED definitions
-#define LED_GREEN   LATDbits.LD0
-#define LED_RED     LATCbits.LC3
-
-// Motor rotation hall sensors
-#define HALL_A      PORTAbits.RA2
-#define HALL_B      PORTAbits.RA3
-#define HALL_C      PORTAbits.RA4
-
 // FLAGS_STATUS
 // definition of bits in flags_status byte
 /*
@@ -70,6 +61,13 @@
 #define FLT_EXT_TRIS    TRISDbits.RD4
 #define FLT_EXT_PORT    PORTDbits.RD4
 
+// Debugging outputs
+#define DEBUG_PINS      // turn on debugging output pins
+//#define PID_DEBUG     // UART PID messages
+//#define TRANSISTOR_TEMP_DEBUG     // UART trans. temperature messages
+//#define MOTOR_TEMP_DEBUG          // UART motor temperature messages
+//#define BATT_VOLTAGE_DEBUG        // UART battery voltage messages
+
 // SPI
 #define TX_tab_size     9   // 8 data + 1 null terminator
 #define TX_DTC              0
@@ -110,6 +108,9 @@
 #define REQ_I_STEP  10
 #define REQ_I_MAX   100
 #define REQ_I_MIN   0
+
+// PID
+
 
 /******************************************************************************/
 /* User Variables initialization                                              */

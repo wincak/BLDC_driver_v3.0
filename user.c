@@ -65,9 +65,12 @@ unsigned int PCPWMSptime = 0;
 // Timer 0
 unsigned char TMR0Config = 0;
 
-// Data tabs
-unsigned int LUT_I_req[256];    // Table for current request translation
-                                // 8bit request -> 16 bit internal use
+// Conversion data and tables
+extern float LM335_ADC_8bittoV;
+extern float Thermistor_ADC_8bittoV;
+extern float BATT_ADC_8bittoV;
+//unsigned int LUT_I_req[CHAR_MAX+1];     // Table for current request translation
+                                        // 8bit request -> 16 bit internal use
 
 /******************************************************************************/
 /* User Functions                                                             */
@@ -97,7 +100,11 @@ void InitApp(void)
 
     ANSEL0 = 0b11100010;    // analog input settings
 
-    IO_EXT_TRIS = 0;    // debugging output
+#ifdef DEBUG_PINS
+    // debugging outputs
+    IO_EXT_TRIS = 0;    
+    FLT_EXT_TRIS = 0;
+#endif
 
 #ifndef UART_CONTROL
     /***********************   SPI   ******************************************/
@@ -232,7 +239,7 @@ void InitApp(void)
     PCPWMConfig0 = PWM_IO_ALL & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
             & PWM_4AND5_INDPEN & PWM_6AND7_INDPEN;
     PCPWMConfig1 = PW_SEVT_POS_1_16 & PW_SEVT_DIR_UP & PW_OP_SYNC;
-    PCPWMConfig2 = PT_POS_1_4 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
+    PCPWMConfig2 = PT_POS_1_16 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
     PCPWMConfig3 = PT_ENABLE & PT_CNT_UP;   // warn: this is correct,
                                             // comment in plib is wrong
     PCPWMPeriod = PWM_PERIOD;
@@ -262,6 +269,13 @@ void InitApp(void)
     INTCONbits.GIEH = 1;    // zapinam high level interrupty
     INTCONbits.GIEL = 1;    // zapinam low level interrupty
 
+    /*******************  CALCULATION OF CONSTANTS*****************************/
+
+    // A/D result calculation
+    LM335_ADC_8bittoV = VCC/CHAR_MAX*100;   // 10mV/K
+    Thermistor_ADC_8bittoV = VCC/CHAR_MAX;  // TODO: find out temp. coefficient
+    BATT_ADC_8bittoV = (10*VCC/CHAR_MAX)/BATT_V_DIVIDER; // output as Ux10^-1 V
+
 }
 
 /* TabGen
@@ -270,6 +284,7 @@ void InitApp(void)
  * to 16-bit value used internally
  * WARNING: Uses like 65% of data memory!
  */
+/*
 void TabGen(void){
     int pos;
 
@@ -282,3 +297,4 @@ void TabGen(void){
 
     return;
 }
+*/
