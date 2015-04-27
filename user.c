@@ -227,7 +227,11 @@ void InitApp(void)
     /********************   TIMER 0  ******************************************/
     // Connection timeout timer
     // check time to overflow
+#ifdef USE_PLL
+    TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_128;
+#else
     TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_32;
+#endif
     OpenTimer0(TMR0Config);
     INTCON2bits.TMR0IP = 1;     // high priority interrupt
 

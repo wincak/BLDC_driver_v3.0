@@ -17,7 +17,7 @@
 
 /* Microcontroller MIPs (FCY) */
 #define _XTAL_FREQ      10000000L   // external crystal frequency
-//#define USE_PLL                     // is PLL switched on?
+#define USE_PLL                     // is PLL switched on?
 
 #ifdef USE_PLL
     #define SYS_FREQ        _XTAL_FREQ*4
@@ -47,11 +47,27 @@
 
 /* UART control */
 #define UART_CONTROL
-#ifdef PLL
+#ifdef USE_PLL
     #define BAUD_115200     86
 #else
     #define BAUD_115200     21
 #endif
+
+/* PWM definitions */
+#ifdef USE_PLL
+    // Period PWM: 40MHz, 0x00FF, UPDN => 9.8 kHz
+    #define PWM_PERIOD  0x01FE  // default PWM period
+    #define DTC_min     200     // change!
+    #define DTC_max     1500    // change!
+    #define DTC_step    100     // change! (for USART debug)
+#else
+    // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz
+    #define PWM_PERIOD  0x00FF  // default PWM period
+    #define DTC_min     100     // change!
+    #define DTC_max     750     // change!
+    #define DTC_step    50      // change! (for USART debug)
+#endif
+
 
 /* Current limit */
 #define I_MAX   5   // Max current in Amps

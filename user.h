@@ -45,6 +45,14 @@
 #define motor_mode  (flags_status & 0b00000111)
 #define flags_error (flags_status & 0b01111000)
 
+// Status structure
+typedef struct {
+    unsigned int current;
+    unsigned char motor_temp;
+    unsigned char transistor_temp;
+    unsigned char batt_voltage;
+} struct_status;
+
 // Motor mode definitions
 #define mode_free_run   0b000
 #define mode_motor_CW   0b001
@@ -62,11 +70,12 @@
 #define FLT_EXT_PORT    PORTDbits.RD4
 
 // Debugging outputs
+#define DEBUG_STATUS    // UART system status messages
 #define DEBUG_PINS      // turn on debugging output pins
-//#define PID_DEBUG     // UART PID messages
-//#define TRANSISTOR_TEMP_DEBUG     // UART trans. temperature messages
-//#define MOTOR_TEMP_DEBUG          // UART motor temperature messages
-//#define BATT_VOLTAGE_DEBUG        // UART battery voltage messages
+//#define DEBUG_PID     // UART PID messages
+//#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
+//#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
+//#define DEBUG_BATT_VOLTAGE        // UART battery voltage messages
 
 // SPI
 #define TX_tab_size     9   // 8 data + 1 null terminator
@@ -96,13 +105,6 @@
 #define ADC_H_MOTOR_TEMP        2
 #define ADC_H_TRANSISTOR_TEMP   4
 #define ADC_H_BATT_VOLTAGE      6
-
-// PWM definitions
-// Period PWM: 10MHz, 0x00FF, UPDN => 4.7kHz
-#define PWM_PERIOD  0x00FF  // default PWM period
-#define DTC_min     100     // change!
-#define DTC_max     750     // change!
-#define DTC_step    50      // change! (for USART debug)
 
 // UART
 #define REQ_I_STEP  10
@@ -203,3 +205,8 @@ void motor_halt();  // stop motor on error
 
 // PID
 void PID(void);
+
+// Debug
+#ifdef DEBUG_STATUS
+void debug_status(void);
+#endif

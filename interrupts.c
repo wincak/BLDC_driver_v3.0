@@ -25,6 +25,7 @@
 
 #include <stdint.h>         /* For uint8_t definition */
 #include <stdbool.h>        /* For true/false definition */
+#include <stdio.h>         /* sprintf() */
 
 #endif
 
@@ -35,6 +36,13 @@
 extern unsigned char flags_status;
 extern bit flag_stop;
 extern bit flag_ADC_data_rdy;
+#ifdef DEBUG_STATUS
+extern bit flag_debug_status;
+#endif
+
+// Status
+extern struct_status status;
+extern unsigned int dutycycle;
 
 // ADC
 extern unsigned char ADC_tab[8];    // ADC result tab
@@ -59,8 +67,6 @@ void interrupt int_high()
     if(PIR3bits.IC1IF || PIR3bits.IC2QEIF || PIR3bits.IC3DRIF){
         PIR3bits.IC1IF = 0; PIR3bits.IC2QEIF = 0; PIR3bits.IC3DRIF = 0;
 
-        FLT_EXT_PORT = 1;
-
         switch(motor_mode){     // Motor mode check
             case mode_free_run: break;                   // motor off
             case mode_motor_CW: commutate_mot(); break;  // motoring
@@ -69,8 +75,6 @@ void interrupt int_high()
             case mode_regen_CCW: commutate_gen(); break;
             default: motor_halt(); break;                // error, stop
         }
-
-        FLT_EXT_PORT = 0;
     }
     else if(PIR1bits.ADIF && PIE1bits.ADIE){
         PIR1bits.ADIF = 0;
@@ -95,8 +99,12 @@ void interrupt int_high()
     }
     else if(INTCONbits.TMR0IF && INTCONbits.TMR0IE){
         INTCONbits.TMR0IF = 0;
+
 #ifndef UART_CONTROL
         setbit(flags_status,comm_error);  // comm_error flag set
+#endif
+#ifdef DEBUG_STATUS
+        flag_debug_status = 1;
 #endif
         LED_GREEN = !LED_GREEN;         // Green LED blink
     }

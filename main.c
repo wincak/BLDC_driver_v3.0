@@ -42,14 +42,12 @@ bit flag_stop = 0 ;                         // stop motor
 bit flag_ADC_data_rdy = 0;                  // ADC conversion complete
 bit flag_SPI_data_rdy = 0;                  // new SPI data recieved
 // bit flag_veloc_rdy;                      // velocity meas. ready (not used)
+#ifdef DEBUG_STATUS
+bit flag_debug_status = 0;
+#endif
 
 // Conditions
-struct {
-    unsigned int current;
-    unsigned char motor_temp;
-    unsigned char transistor_temp;
-    unsigned char batt_voltage;
-} status = {0,0,0,0};
+struct_status status = {0,0,0,0};
 
 // Requests
 unsigned int req_current = 0;
@@ -130,6 +128,13 @@ void main(void)
         if(flag_SPI_data_rdy){  // new SPI data?
             SPI_request_update();
         }
+
+#ifdef DEBUG_STATUS
+        if(flag_debug_status){
+            flag_debug_status = 0;
+            debug_status();
+        }
+#endif
 
     }while(1);
 
@@ -294,9 +299,9 @@ void calc_ADC_data (void){
     Motor_temp = ADC_buffer[ADC_H_MOTOR_TEMP];
     Motor_temp = (char)(Motor_temp*Thermistor_ADC_8bittoV);
     status.motor_temp = Motor_temp;
-#ifdef MOTOR_TEMP_DEBUG
+#ifdef DEBUG_MOTOR_TEMP
     char USART_m_temp_msg[12];
-    sprintf(USART_m_temp_msg,"T_TEMP:%d\n\r",status.motor_temp);
+    sprintf(USART_m_temp_msg,"M_TEMP:%d\n\r",status.motor_temp);
     putsUSART((char *)USART_m_temp_msg);
 #endif
 
@@ -304,21 +309,19 @@ void calc_ADC_data (void){
     Transistor_temp = ADC_buffer[ADC_H_TRANSISTOR_TEMP];
     Transistor_temp = (char)(Transistor_temp*LM335_ADC_8bittoV)-KELVIN_OFFSET;
     status.transistor_temp = Transistor_temp;
-#ifdef TRANSISTOR_TEMP_DEBUG
+#ifdef DEBUG_TRANSISTOR_TEMP
     char USART_t_temp_msg[10];
     sprintf(USART_t_temp_msg,"T_TEMP:%d\n\r",status.transistor_temp);
     putsUSART((char *)USART_t_temp_msg);
 #endif
-    IO_EXT_PORT = 1;
 
     /* Calculate Battery voltage */
     /* TODO Calculate battery voltage */
     Batt_voltage = ADC_buffer[ADC_H_BATT_VOLTAGE];
     Batt_voltage = (char)(Batt_voltage*BATT_ADC_8bittoV);
     status.batt_voltage = Batt_voltage;
-    IO_EXT_PORT = 0;
 
-#ifdef BATT_VOLTAGE_DEBUG
+#ifdef DEBUG_BATT_VOLTAGE
     char USART_batt_V_msg[10];
     sprintf(USART_batt_V_msg,"BATT:%d\n\r",status.batt_voltage);
     putsUSART((char *)USART_batt_V_msg);
@@ -348,7 +351,7 @@ void PID(void){
                 set_dutycycle(dutycycle - DTC_step);
         }
         else set_dutycycle(0);    // something went wrong, abort
-#ifdef PID_DEBUG
+#ifdef DEBUG_PID
         char USART_dtc_msg[10];
 
         sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
@@ -365,3 +368,33 @@ void PID(void){
 
 
 }
+
+#ifdef DEBUG_STATUS
+void debug_status(void){
+        IO_EXT_PORT = 1;
+
+        char USART_batt_dbg_msg[10];
+        sprintf(USART_batt_dbg_msg,"REQ:%d\n\r",req_current);
+        putsUSART((char *)USART_batt_dbg_msg);
+
+        sprintf(USART_batt_dbg_msg,"STA:%d\n\r",status.current);
+        putsUSART((char *)USART_batt_dbg_msg);
+
+        sprintf(USART_batt_dbg_msg,"DTC:%d\n\r",dutycycle);
+        putsUSART((char *)USART_batt_dbg_msg);
+
+        sprintf(USART_batt_dbg_msg,"M_TEMP:%d\n\r",status.motor_temp);
+        putsUSART((char *)USART_batt_dbg_msg);
+
+        sprintf(USART_batt_dbg_msg,"T_TEMP:%d\n\r",status.transistor_temp);
+        putsUSART((char *)USART_batt_dbg_msg);
+
+        sprintf(USART_batt_dbg_msg,"BATT:%d\n\n\r",status.batt_voltage);
+        putsUSART((char *)USART_batt_dbg_msg);
+
+        IO_EXT_PORT = 0;
+
+        return;
+}
+
+#endif
