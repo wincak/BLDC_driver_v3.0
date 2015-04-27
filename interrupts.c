@@ -44,7 +44,7 @@ unsigned char hbuf, lbuf;           // fast ASM decode variables
 unsigned int BF_timeout;
 
 // Requests
-extern unsigned char req_current;
+extern unsigned int req_current;
 extern unsigned char req_motor_mode;
 
 
@@ -128,8 +128,9 @@ void interrupt low_priority int_low()
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){
-        //char TX_msg[6] = "Hello\0";
         char UART_RX_buff;
+
+        LED_GREEN = 1;
 
         // Read the receive register to clear interrupt flag
         while(PIR1bits.RCIF){
@@ -145,11 +146,19 @@ void interrupt low_priority int_low()
                 case 's' : {         // motor CCW requested
                     req_motor_mode = mode_motor_CCW; break;
                 }
+                case '+' : {
+                    if(req_current <= INT_MAX-REQ_I_STEP)
+                        req_current += REQ_I_STEP; break;
+                }
+                case '-' : {
+                    if(req_current >= REQ_I_STEP)
+                        req_current -= REQ_I_STEP; break;
+                }
             }
         }
-        //putsUSART(TX_msg);
-        //WriteUSART('\n');
-        //WriteUSART('\r');
+
+        LED_GREEN = 0;
+
     }
 #endif
 }

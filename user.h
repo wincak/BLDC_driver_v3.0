@@ -99,6 +99,18 @@
 #define ADC_H_TRANSISTOR_TEMP   4
 #define ADC_H_BATT_VOLTAGE      6
 
+// PWM definitions
+// Period PWM: 10MHz, 0x00FF, UPDN => 4.7kHz
+#define PWM_PERIOD  0x00FF  // default PWM period
+#define DTC_min     100     // change!
+#define DTC_max     750     // change!
+#define DTC_step    50      // change! (for USART debug)
+
+// UART
+#define REQ_I_STEP  10
+#define REQ_I_MAX   100
+#define REQ_I_MIN   0
+
 /******************************************************************************/
 /* User Variables initialization                                              */
 /******************************************************************************/
@@ -166,6 +178,7 @@ extern unsigned char pos6;      // PWM5 & PWM0 active
 /******************************************************************************/
 
 void InitApp(void);         /* I/O and Peripheral Initialization */
+void TabGen(void);          /* Calculate constants */
 
 // SPI
 unsigned char Receive_SPI_data(unsigned char length);

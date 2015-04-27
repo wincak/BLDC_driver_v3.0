@@ -40,12 +40,13 @@
 /* Variables                                                                  */
 /******************************************************************************/
 
+// Flags
 extern unsigned char flags_status;
 
+// SPI
 unsigned char sync_mode = 0;
 unsigned char bus_mode = 0;
 unsigned char smp_phase = 0;
-unsigned char w = 0;
 
 #ifdef UART_CONTROL
 unsigned char UARTConfig = 0;
@@ -63,6 +64,10 @@ unsigned int PCPWMSptime = 0;
 
 // Timer 0
 unsigned char TMR0Config = 0;
+
+// Data tabs
+unsigned int LUT_I_req[256];    // Table for current request translation
+                                // 8bit request -> 16 bit internal use
 
 /******************************************************************************/
 /* User Functions                                                             */
@@ -138,7 +143,7 @@ void InitApp(void)
     RCSTAbits.CREN = 1;     // UART Receiver enable
     BAUDCONbits.BRG16 = 1;  // 16-bit baud rate generator
 
-    SPBRG = 21;     // Baud rate divider
+    SPBRG = BAUD_115200;     // Baud rate divider.
 
 
     // Set interrupts once againt, this time for real
@@ -230,8 +235,8 @@ void InitApp(void)
     PCPWMConfig2 = PT_POS_1_4 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
     PCPWMConfig3 = PT_ENABLE & PT_CNT_UP;   // warn: this is correct,
                                             // comment in plib is wrong
-    PCPWMPeriod = 0x00FF;   // Perioda PWM: 10MHz, 0x00FF, UPDN => 4.7kHz
-                            // 10 MHz, 0x00FF, FREE_RUN => 9.8 kHz
+    PCPWMPeriod = PWM_PERIOD;
+
     PCPWMSptime = 0x01; // 0x01 means trigger for A/D conversion right in
                         // the middle of PWM pulse
 
@@ -257,4 +262,23 @@ void InitApp(void)
     INTCONbits.GIEH = 1;    // zapinam high level interrupty
     INTCONbits.GIEL = 1;    // zapinam low level interrupty
 
+}
+
+/* TabGen
+ *
+ * Calculates table of constants to translate legacy 8-bit SPI current requests
+ * to 16-bit value used internally
+ * WARNING: Uses like 65% of data memory!
+ */
+void TabGen(void){
+    int pos;
+
+    LED_GREEN = 1;
+    for(pos=CHAR_MAX; pos>=0; pos--){
+        LUT_I_req[pos] = (pos/CHAR_MAX)*INT_MAX;
+    }
+
+    LED_GREEN = 0;
+
+    return;
 }

@@ -22,6 +22,8 @@
 
 #include <stdint.h>        /* For uint8_t definition */
 #include <stdbool.h>       /* For true/false definition */
+#include <stdlib.h>        /* abs() */
+#include <stdio.h>         /* sprintf() */
 
 #endif
 
@@ -40,17 +42,21 @@ bit flag_ADC_data_rdy = 0;                  // ADC conversion complete
 bit flag_SPI_data_rdy = 0;                  // new SPI data recieved
 // bit flag_veloc_rdy;                      // velocity meas. ready (not used)
 
+// Conditions
+struct {
+    unsigned int current;
+    unsigned char motor_temp;
+    unsigned char transistor_temp;
+    unsigned char batt_voltage;
+} status = {0,0,0,0};
+
 // Requests
-unsigned char req_current = 0;
+unsigned int req_current = 0;
 unsigned char req_motor_mode = 0;
 
 // SPI
 unsigned char RX_tab[RX_tab_size];    // SPI data receive tab
 unsigned char TX_tab[TX_tab_size];    // SPI data send tab
-
-unsigned char sync_mode;
-unsigned char bus_mode;
-unsigned char smp_phase;
 
 // Timer 0
 unsigned char TMR0Config = 0;
@@ -63,6 +69,7 @@ extern unsigned int PCPWMPeriod;    // Can be 1/4 of dutycycle!! Weird prescaler
 unsigned char ADC_tab[ADC_tab_size];       // A/D result tab
 
 // PID
+unsigned char prescaler = 100;
 
 
 // Commutation table (for 3.0 hardware version)
@@ -82,6 +89,9 @@ void main(void)
 {
     /* Initialize I/O and Peripherals for application */
     InitApp();
+
+    /* Calculate constants */
+    TabGen();
 
     do    // main program loop
     {
@@ -105,7 +115,11 @@ void main(void)
 
         if(flag_ADC_data_rdy){  // new A/D data?
             calc_ADC_data();
-            PID();
+            if(!prescaler){     // run PID every 100 cycles
+                PID();
+                prescaler = 100;
+            }else prescaler--;
+
         }
 
         if(flag_SPI_data_rdy){  // new SPI data?
@@ -130,6 +144,7 @@ void set_dutycycle(unsigned int dtc){
     Setdc1pcpwm(dtc);
     Setdc2pcpwm(dtc);
     Setdc3pcpwm(dtc);
+    dutycycle = dtc;
 }
 
 void motor_init(unsigned char direction){
@@ -158,7 +173,7 @@ void motor_init(unsigned char direction){
         else if(HALL_A & HALL_B & !HALL_C) OVDCOND = pos4;
         else if(HALL_A & !HALL_B & !HALL_C) OVDCOND = pos5;
         else if(HALL_A & !HALL_B & HALL_C) OVDCOND = pos6;
-        //else motor_halt();   // error
+        else motor_halt();   // error
     }
     else if(direction == CCW){  // init CCW commutation
         putsUSART((char *)USART_CCW_msg);
@@ -175,9 +190,11 @@ void motor_init(unsigned char direction){
         else if(HALL_A & HALL_B & !HALL_C) OVDCOND = pos1;
         else if(HALL_A & !HALL_B & !HALL_C) OVDCOND = pos2;
         else if(HALL_A & !HALL_B & HALL_C) OVDCOND = pos3;
-        //else motor_halt();// error
+        else motor_halt();// error
     }
     else motor_halt();
+
+    set_dutycycle(DTC_min);
 }
 
 void regen_init(unsigned char direction){
@@ -205,6 +222,7 @@ void SPI_request_update (void){
     unsigned char buff = 0;
 
     /* Load Current request value */
+    // TODO: calculate req_current 8bit-16bit
     req_current = RX_tab[RX_CURRENT_REQ];
 
     /* Load motor mode request */
@@ -263,18 +281,23 @@ void calc_ADC_data (void){
     // average for one period
     current_current = (((current_buffer*dutycycle)/(4*PCPWMPeriod))
             +HALL_U_OFFSET);
+    // save into global status register
+    status.current = current_current;
 
     /* Calculate Motor temperature */
     /* TODO Calculate Motor temperature*/
     Motor_temp = ADC_buffer[ADC_H_MOTOR_TEMP];
+    status.motor_temp = Motor_temp;
 
     /* Calculate Transistor temperature */
     /* TODO Calculate Transistor temperature */
     Transistor_temp = ADC_buffer[ADC_H_TRANSISTOR_TEMP];
+    status.transistor_temp = Transistor_temp;
 
     /* Calculate Battery voltage */
     /* TODO Calculate battery voltage */
     Batt_voltage = ADC_buffer[ADC_H_BATT_VOLTAGE];
+    status.batt_voltage = Batt_voltage;
 
     /* Update TX_tab data */
     TX_tab[TX_H_CURRENT] = (current_current>>8) & 0x0003;
@@ -288,6 +311,31 @@ void calc_ADC_data (void){
 
 void PID(void){
     /* TODO PID regulator */
-    asm("nop");
-    set_dutycycle(725); // fixed value for testing purposes
+    char USART_dtc_msg[10];
+
+
+    // Begin Makeshift linear regulator
+    if(abs(req_current-status.current) >= 5){ // error big enough?
+        if(status.current < req_current){ // increase current
+            if(dutycycle < DTC_max)
+                set_dutycycle(dutycycle + DTC_step);
+        }
+        else if (status.current > req_current){  // decrease current
+            if(dutycycle > DTC_min)
+                set_dutycycle(dutycycle - DTC_step);
+        }
+        else set_dutycycle(0);    // something went wrong, abort
+
+        sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
+        putsUSART((char *)USART_dtc_msg);
+
+        sprintf(USART_dtc_msg,"STA:%d\n\r",status.current);
+        putsUSART((char *)USART_dtc_msg);
+
+        sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
+        putsUSART((char *)USART_dtc_msg);
+
+    }
+
+
 }

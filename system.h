@@ -27,16 +27,11 @@
 #define FCY             SYS_FREQ/4
 
 /* ADC condition definitions */
-// Microcontroller input voltage */
-//#define VCC     3     // fs <= 10MHz only
+// Microcontroller input voltage
+//#define VCC     3.3   // fs <= 10MHz only
 #define VCC     5       // Use SPI voltage level shift!
 // Current Hall Sensor Offset
 #define HALL_U_OFFSET   511
-
-/* PWM definitions */
-#define DTC_min     0       // change!
-#define DTC_max     1000    // change!
-#define DTC_step    50      // change! (for USART debug)
 
 /* Hall rotation sensor mask */
 #define HALL_MASK   0b00011100
@@ -46,6 +41,19 @@
 
 /* UART control */
 #define UART_CONTROL
+#ifdef PLL
+    #define BAUD_115200     86
+#else
+    #define BAUD_115200     21
+#endif
+
+/* Current limit */
+#define I_MAX   5   // Max current in Amps
+
+/* Data type limits */
+// useless? yeah, but better to see where that number came from
+#define CHAR_MAX    255
+#define INT_MAX     1023
 
 
 /******************************************************************************/
