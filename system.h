@@ -17,7 +17,7 @@
 
 /* Microcontroller MIPs (FCY) */
 #define _XTAL_FREQ      10000000L   // external crystal frequency
-#define USE_PLL                     // is PLL switched on?
+//#define USE_PLL                     // is PLL switched on?
 
 #ifdef USE_PLL
     #define SYS_FREQ        _XTAL_FREQ*4
@@ -69,8 +69,12 @@
 #endif
 
 
-/* Current limit */
+/* Operation condition limits */
 #define I_MAX   5   // Max current in Amps
+#define M_TEMP_MAX  50
+#define T_TEMP_MAX  80
+#define V_BATT_MIN  85  // in decivolts
+#define V_BATT_MAX  18
 
 /* Status LED definitions */
 #define LED_GREEN   LATDbits.LD0

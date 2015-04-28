@@ -19,15 +19,16 @@
 #define testbit(x,n) (!!((x)&1UL<<(n)))     // check optimalization
 
 // FLAGS_STATUS
+// TODO: Getting sick of this rigid code. Change to bit variables? Struct?
 // definition of bits in flags_status byte
 /*
  * | MSB |   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   | LSB |
  * |-----|-------|-------|-------|-------|-------|-------|-------|-------|-----|
- * | bit |ONLINE | FLT_I |FLT_T_M| FLT_U |COMM_ER|      Motor mode       |     |
+ * | bit |ONLINE | FLT_I | FLT_T | FLT_U |COMM_ER|      Motor mode       |     |
  * |---------------------------------------------------------------------------|
  * ONLINE:      1 = ONLINE/OK, 0 = OFFLINE
  * FLT_I:       0 = OK, 1 = Overcurrent condition
- * FLT_T_M:     0 = OK, 1 = Max. motor temp exceeded
+ * FLT_T:       0 = OK, 1 = Max. temp exceeded
  * FLT_U:       0 = OK, 1 = Battery voltage error
  * COMM_ER:     0 = OK, 1 = Communication error
  * Motor mode:  000 = Motor off
@@ -39,7 +40,7 @@
  */
 #define online      7
 #define FLT_I       6
-#define FLT_T_M     5
+#define FLT_T       5
 #define FLT_U       4
 #define comm_error  3
 #define motor_mode  (flags_status & 0b00000111)
@@ -71,7 +72,7 @@ typedef struct {
 
 // Debugging outputs
 #define DEBUG_STATUS    // UART system status messages
-#define DEBUG_PINS      // turn on debugging output pins
+//#define DEBUG_PINS      // turn on debugging output pins
 //#define DEBUG_PID     // UART PID messages
 //#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
@@ -191,8 +192,12 @@ void SPI_request_update (void);
 // ADC
 void calc_ADC_data (void);
 
+// Condition check
+char limits_check(void);
+
 // Dutycycle
 void set_dutycycle (unsigned int dtc);
+void PID(void);
 
 // Commutation asm routines
 void commutate_mot();   // TODO
@@ -202,9 +207,6 @@ void motor_init(unsigned char direction);
 void regen_init(unsigned char direction);
 void free_run_init();
 void motor_halt();  // stop motor on error
-
-// PID
-void PID(void);
 
 // Debug
 #ifdef DEBUG_STATUS

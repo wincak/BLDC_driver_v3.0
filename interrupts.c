@@ -63,7 +63,6 @@ extern unsigned char req_motor_mode;
 /* High-priority service */
 void interrupt int_high()
 {
-
     if(PIR3bits.IC1IF || PIR3bits.IC2QEIF || PIR3bits.IC3DRIF){
         PIR3bits.IC1IF = 0; PIR3bits.IC2QEIF = 0; PIR3bits.IC3DRIF = 0;
 
@@ -173,4 +172,5 @@ void interrupt low_priority int_low()
 
     }
 #endif
+
 }

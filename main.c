@@ -90,6 +90,9 @@ unsigned char pos6 = 0b00010010;      // PWM5 & PWM0 active
 
 void main(void)
 {
+    char ret;
+
+
     /* Initialize I/O and Peripherals for application */
     InitApp();
 
@@ -123,13 +126,16 @@ void main(void)
                 prescaler = 100;
             }else prescaler--;
 
+            // Check condition limits
+            ret = limits_check();
+            if(ret) motor_halt;
         }
 
         if(flag_SPI_data_rdy){  // new SPI data?
             SPI_request_update();
         }
 
-#ifdef DEBUG_STATUS
+#ifdef DEBUG_STATUS     // UART status debugging messages
         if(flag_debug_status){
             flag_debug_status = 0;
             debug_status();
@@ -140,7 +146,7 @@ void main(void)
 
 }
 
-// stop motor on error
+/* Stop motor on error and set error conditions */
 void motor_halt(){
     OVDCOND = 0;
     set_dutycycle(0);
@@ -148,7 +154,7 @@ void motor_halt(){
     LED_RED = 1;
 }
 
-// Set dutycycle value for all PWM channels
+/* Set dutycycle value for all PWM channels */
 void set_dutycycle(unsigned int dtc){
     Setdc0pcpwm(dtc);
     Setdc1pcpwm(dtc);
@@ -157,6 +163,7 @@ void set_dutycycle(unsigned int dtc){
     dutycycle = dtc;
 }
 
+/* Switch motor to motoring mode */
 void motor_init(unsigned char direction){
     unsigned char USART_CW_msg[] = "CW  \r";
     unsigned char USART_CCW_msg[] = "CCW \r";
@@ -207,11 +214,13 @@ void motor_init(unsigned char direction){
     set_dutycycle(DTC_min);
 }
 
+/* Switch motor to regenerative braking mode */
 void regen_init(unsigned char direction){
     /* TODO Regen braking initialization*/
     asm("nop");
 }
 
+/* Switch motor to free run mode */
 void free_run_init(){
     unsigned char USART_free_run_msg[] = "FREE\r";
 
@@ -228,6 +237,7 @@ void free_run_init(){
 
 }
 
+/* Decode received SPI data and set request variables */
 void SPI_request_update (void){
     unsigned char buff = 0;
 
@@ -254,12 +264,14 @@ void SPI_request_update (void){
     }
 }
 
+/* Receive new SPI data and store to RX_tab */
 unsigned char Receive_SPI_data(unsigned char length){
     getsSPI(RX_tab,length);
 
     return(0);
 }
 
+/* Transmit data from TX_tab over SPI */
 unsigned char Transmit_SPI_data(unsigned char length){
     TX_tab[length] = '\0';    // inserting null terminator at tab's end
                               // (will not be sent)
@@ -268,6 +280,7 @@ unsigned char Transmit_SPI_data(unsigned char length){
     return(0);
 }
 
+/* Read data from A/D tab and calculate real values */
 void calc_ADC_data (void){
     unsigned char ADC_buffer[ADC_tab_size];
     unsigned int current_buffer;
@@ -296,9 +309,11 @@ void calc_ADC_data (void){
 
     /* Calculate Motor temperature */
     /* TODO: Find out motor thermistor coefficients */
+    /* https://learn.adafruit.com/thermistor/using-a-thermistor */
     Motor_temp = ADC_buffer[ADC_H_MOTOR_TEMP];
     Motor_temp = (char)(Motor_temp*Thermistor_ADC_8bittoV);
     status.motor_temp = Motor_temp;
+
 #ifdef DEBUG_MOTOR_TEMP
     char USART_m_temp_msg[12];
     sprintf(USART_m_temp_msg,"M_TEMP:%d\n\r",status.motor_temp);
@@ -309,6 +324,7 @@ void calc_ADC_data (void){
     Transistor_temp = ADC_buffer[ADC_H_TRANSISTOR_TEMP];
     Transistor_temp = (char)(Transistor_temp*LM335_ADC_8bittoV)-KELVIN_OFFSET;
     status.transistor_temp = Transistor_temp;
+
 #ifdef DEBUG_TRANSISTOR_TEMP
     char USART_t_temp_msg[10];
     sprintf(USART_t_temp_msg,"T_TEMP:%d\n\r",status.transistor_temp);
@@ -335,6 +351,24 @@ void calc_ADC_data (void){
     TX_tab[TX_MOTOR_TEMP] = Motor_temp;
     TX_tab[TX_BATT_VOLTAGE] = Batt_voltage;
 
+}
+
+/* Check if system condition is within operation limits */
+char limits_check(void){
+    if(status.motor_temp > M_TEMP_MAX) setbit(flags_status.FLT_T);
+    if(status.transistor_temp > T_TEMP_MAX) setbit(flags_status.FLT_T);
+    if((status.batt_voltage < V_BATT_MIN) || (status.batt_voltage >V_BATT_MAX))
+        setbit(flags_status.FLT_U);
+    // SPI timeout is managed by Timer0 interrupt and overcurrent by PID
+
+    if(flags_error){
+#ifdef DEBUG_STATUS
+        char USART_dbg_msg[]="OpCond exceeded!\n\r";
+        putsUSART((char *)USART_dbg_msg);
+#endif
+        return(1);
+    }
+    else return 0;
 }
 
 void PID(void){
@@ -371,28 +405,24 @@ void PID(void){
 
 #ifdef DEBUG_STATUS
 void debug_status(void){
-        IO_EXT_PORT = 1;
+        char USART_dbg_msg[10];
+        sprintf(USART_dbg_msg,"REQ:%d\n\r",req_current);
+        putsUSART((char *)USART_dbg_msg);
 
-        char USART_batt_dbg_msg[10];
-        sprintf(USART_batt_dbg_msg,"REQ:%d\n\r",req_current);
-        putsUSART((char *)USART_batt_dbg_msg);
+        sprintf(USART_dbg_msg,"STA:%d\n\r",status.current);
+        putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_batt_dbg_msg,"STA:%d\n\r",status.current);
-        putsUSART((char *)USART_batt_dbg_msg);
+        sprintf(USART_dbg_msg,"DTC:%d\n\r",dutycycle);
+        putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_batt_dbg_msg,"DTC:%d\n\r",dutycycle);
-        putsUSART((char *)USART_batt_dbg_msg);
+        sprintf(USART_dbg_msg,"M_TEMP:%d\n\r",status.motor_temp);
+        putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_batt_dbg_msg,"M_TEMP:%d\n\r",status.motor_temp);
-        putsUSART((char *)USART_batt_dbg_msg);
+        sprintf(USART_dbg_msg,"T_TEMP:%d\n\r",status.transistor_temp);
+        putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_batt_dbg_msg,"T_TEMP:%d\n\r",status.transistor_temp);
-        putsUSART((char *)USART_batt_dbg_msg);
-
-        sprintf(USART_batt_dbg_msg,"BATT:%d\n\n\r",status.batt_voltage);
-        putsUSART((char *)USART_batt_dbg_msg);
-
-        IO_EXT_PORT = 0;
+        sprintf(USART_dbg_msg,"BATT:%d\n\n\r",status.batt_voltage);
+        putsUSART((char *)USART_dbg_msg);
 
         return;
 }
