@@ -53,6 +53,15 @@
     #define BAUD_115200     21
 #endif
 
+/* Timers */
+// TMR0: count = UINT_MAX - 1/(t_instruction*prescaler)
+// TMR0 max period @ 10MHz: 6.7s
+#define TMR0_1s   26473   // Timer0 1 second count
+// TMR1 max period @ 10MHz: 210 ms
+#define TMR1_50ms   3035    // UINT_MAX - 50ms/(t_instruction*prescaler)
+// TMR2 max period @ 10MHz: 26ms
+// TMR5 max period @ 10MHz: 210 ms
+
 /* PWM definitions */
 #ifdef USE_PLL
     // Period PWM: 40MHz, 0x00FF, UPDN => 9.8 kHz

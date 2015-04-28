@@ -22,7 +22,6 @@
 
 #include <stdint.h>        /* For uint8_t definition */
 #include <stdbool.h>       /* For true/false definition */
-#include <stdlib.h>        /* abs() */
 #include <stdio.h>         /* sprintf() */
 #include <float.h>
 
@@ -103,8 +102,8 @@ void main(void)
     {
         if(!flags_error & !flag_stop){   // Everything OK?
             // No error
-            if(req_motor_mode == motor_mode){
-                // update dutycycle
+            if((req_motor_mode == motor_mode) && (motor_mode)){
+                asm("nop");     // everything ok..
             }
             else{
                 switch (req_motor_mode){    // change motor mode
@@ -121,10 +120,6 @@ void main(void)
 
         if(flag_ADC_data_rdy){  // new A/D data?
             calc_ADC_data();
-            if(!prescaler){     // run PID every 100 cycles
-                PID();
-                prescaler = 100;
-            }else prescaler--;
 
             // Check condition limits
             ret = limits_check();
@@ -153,6 +148,7 @@ void main(void)
 /* Stop motor on error and set error conditions */
 void motor_halt(){
     OVDCOND = 0;
+    PID_TIMER_ON = 0;
     set_dutycycle(0);
     flag_stop = 1;
     LED_RED = 1;
@@ -216,6 +212,7 @@ void motor_init(unsigned char direction){
     else motor_halt();
 
     set_dutycycle(DTC_min);
+    PID_TIMER_ON = 1;
 }
 
 /* Switch motor to regenerative braking mode */
@@ -230,6 +227,7 @@ void free_run_init(){
 
     // Power off the motor
     OVDCOND = 0;
+    PID_TIMER_ON = 0;
     set_dutycycle(0);
 
     // Change motor mode bits
@@ -306,8 +304,7 @@ void calc_ADC_data (void){
     // remove offset (bear in mind voltage loss along copper trace)
     current_buffer = current_buffer - HALL_U_OFFSET;
     // average for one period
-    current_current = (((current_buffer*dutycycle)/(4*PCPWMPeriod))
-            +HALL_U_OFFSET);
+    current_current = ((current_buffer*dutycycle)/(4*PCPWMPeriod));
     // save into global status register
     status.current = current_current;
 
@@ -376,45 +373,13 @@ char limits_check(void){
 
 /* Calculate rotation speed from number of rot. hall sensor transitions */
 int calc_velocity(unsigned int transition_count){
-    // 10MHz clock: TMR0_period*sensor_positions ~ 0.83s/6 = 5.039
+    // For TMR0 interrupt every second
     int velocity;
 
-    velocity = transition_count / 5;
+    velocity = transition_count/6;  // Six sensor transitions per revolution
 
     flag_velocity_rdy = 0;
     return velocity;
-}
-
-void PID(void){
-    /* TODO PID regulator */
-    
-    // Begin Makeshift linear regulator
-    if(abs(req_current-status.current) >= 5){ // error big enough?
-        if(status.current < req_current){ // increase current
-            if(dutycycle < DTC_max)
-                set_dutycycle(dutycycle + DTC_step);
-        }
-        else if (status.current > req_current){  // decrease current
-            if(dutycycle > DTC_min)
-                set_dutycycle(dutycycle - DTC_step);
-        }
-        else set_dutycycle(0);    // something went wrong, abort
-#ifdef DEBUG_PID
-        char USART_dtc_msg[10];
-
-        sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
-        putsUSART((char *)USART_dtc_msg);
-
-        sprintf(USART_dtc_msg,"STA:%d\n\r",status.current);
-        putsUSART((char *)USART_dtc_msg);
-
-        sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
-        putsUSART((char *)USART_dtc_msg);
-#endif
-
-    }
-
-
 }
 
 #ifdef DEBUG_STATUS

@@ -26,6 +26,7 @@
 #include <stdint.h>         /* For uint8_t definition */
 #include <stdbool.h>        /* For true/false definition */
 #include <stdio.h>         /* sprintf() */
+#include <stdlib.h>        /* abs() */
 
 #endif
 
@@ -104,6 +105,7 @@ void interrupt int_high()
     }
     else if(INTCONbits.TMR0IF && INTCONbits.TMR0IE){
         INTCONbits.TMR0IF = 0;
+        WriteTimer0(TMR0_1s);
 
 #ifndef UART_CONTROL
         setbit(flags_status,comm_error);  // comm_error flag set
@@ -112,7 +114,6 @@ void interrupt int_high()
         flag_debug_status = 1;
 #endif
         LED_GREEN = !LED_GREEN;         // Green LED blink
-        IO_EXT_PORT =! IO_EXT_PORT;
 
         // Store value for velocity calculation and reset the counter
         rot_change_count_buffer = rot_change_count;
@@ -125,6 +126,7 @@ void interrupt int_high()
 /* Low-priority service */
 void interrupt low_priority int_low()
 {
+    // SPI data exchange
     if(INTCON3bits.INT2IF && INTCON3bits.INT2IE){
         INTCON3bits.INT2IF = 0;
 
@@ -148,6 +150,39 @@ void interrupt low_priority int_low()
         LED_GREEN = 1;
 
         LED_RED = 0;
+    }
+    // PID routine
+    else if(PIR1bits.TMR1IF && PIE1bits.TMR1IE){
+        PIR1bits.TMR1IF = 0;
+        WriteTimer1(TMR1_50ms);
+        /* TODO PID regulator */
+
+        // Begin Makeshift linear regulator
+        if(abs(req_current-status.current) >= 5){ // error big enough?
+            if(status.current < req_current){ // increase current
+                if(dutycycle < DTC_max)
+                    dutycycle = dutycycle + DTC_step;
+            }
+            else if (status.current > req_current){  // decrease current
+                if(dutycycle > DTC_min)
+                    dutycycle = dutycycle - DTC_step;
+            }
+            else dutycycle = 0;    // something went wrong, abort
+
+#ifdef DEBUG_PID
+            char USART_dtc_msg[10];
+
+            sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
+            putsUSART((char *)USART_dtc_msg);
+
+            sprintf(USART_dtc_msg,"STA:%d\n\r",status.current);
+            putsUSART((char *)USART_dtc_msg);
+
+            sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
+            putsUSART((char *)USART_dtc_msg);
+#endif
+        }
+
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){

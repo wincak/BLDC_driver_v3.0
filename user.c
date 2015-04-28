@@ -62,8 +62,9 @@ unsigned char PCPWMConfig3 = 0;
 unsigned int PCPWMPeriod = 0;
 unsigned int PCPWMSptime = 0;
 
-// Timer 0
+// Timers
 unsigned char TMR0Config = 0;
+unsigned char TMR1Config = 0;
 
 // Conversion data and tables
 extern float LM335_ADC_8bittoV;
@@ -225,15 +226,28 @@ void InitApp(void)
     ADCON0bits.ADON = 1;    // ADC On
 
     /********************   TIMER 0  ******************************************/
-    // Connection timeout timer
-    // check time to overflow
+    // Connection timeout timer, Velocity measurement
 #ifdef USE_PLL
-    TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_128;
+    TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_256;
 #else
-    TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_32;
+    TMR0Config = TIMER_INT_ON & T0_16BIT & T0_SOURCE_INT & T0_PS_1_64;
 #endif
+    WriteTimer0(TMR0_1s);
     OpenTimer0(TMR0Config);
     INTCON2bits.TMR0IP = 1;     // high priority interrupt
+
+    /********************   TIMER 1  ******************************************/
+    // PID timer
+#ifdef USE_PLL
+    TMR1Config = TIMER_INT_ON & T1_16BIT_RW & T1_SOURCE_INT & T1_PS_1_8
+            & T1_OSC1EN_ON;
+#else
+    TMR1Config = TIMER_INT_ON & T1_16BIT_RW & T1_SOURCE_INT & T1_PS_1_2
+            & T1_OSC1EN_ON;
+#endif
+    WriteTimer1(TMR1_50ms);
+    OpenTimer1(TMR1Config);
+    IPR1bits.TMR1IP = 0;    // low priority interrupt
 
     /***********************  PCPWM  ******************************************/
     // Comments:

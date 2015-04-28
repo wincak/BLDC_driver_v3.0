@@ -114,7 +114,7 @@ typedef struct {
 #define REQ_I_MIN   0
 
 // PID
-
+#define PID_TIMER_ON    T1CONbits.TMR1ON
 
 /******************************************************************************/
 /* User Variables initialization                                              */
@@ -198,8 +198,6 @@ char limits_check(void);
 
 // Dutycycle
 void set_dutycycle (unsigned int dtc);
-void PID(void);
-
 // Velocity
 int calc_velocity(unsigned int transition_count);
 
