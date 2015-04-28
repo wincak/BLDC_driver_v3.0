@@ -37,7 +37,7 @@
 #define VCC     4.7       // Use SPI voltage level shift!
 #define HALL_U_OFFSET   511     // Current Hall Sensor Offset
 #define KELVIN_OFFSET   273     // 0°C ~ 273K
-#define BATT_V_DIVIDER  (3.9/(12+3.9))    // Battery voltage sense divider
+#define BATT_V_DIVIDER  0.245   // Battery voltage sense divider (3.9/(12+3.9))
 
 /* Hall rotation sensor mask */
 #define HALL_MASK   0b00011100
@@ -74,7 +74,7 @@
 #define M_TEMP_MAX  50
 #define T_TEMP_MAX  80
 #define V_BATT_MIN  85  // in decivolts
-#define V_BATT_MAX  18
+#define V_BATT_MAX  180
 
 /* Status LED definitions */
 #define LED_GREEN   LATDbits.LD0

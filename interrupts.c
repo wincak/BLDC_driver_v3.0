@@ -36,6 +36,7 @@
 extern unsigned char flags_status;
 extern bit flag_stop;
 extern bit flag_ADC_data_rdy;
+extern bit flag_velocity_rdy;
 #ifdef DEBUG_STATUS
 extern bit flag_debug_status;
 #endif
@@ -48,8 +49,10 @@ extern unsigned int dutycycle;
 extern unsigned char ADC_tab[8];    // ADC result tab
 unsigned char hbuf, lbuf;           // fast ASM decode variables
 
-// Timeout
+// Timing
 unsigned int BF_timeout;
+unsigned int rot_change_count = 0;      // hall sensor transition counter
+unsigned int rot_change_count_buffer = 0; // buffer for storing counter values
 
 // Requests
 extern unsigned int req_current;
@@ -74,6 +77,9 @@ void interrupt int_high()
             case mode_regen_CCW: commutate_gen(); break;
             default: motor_halt(); break;                // error, stop
         }
+
+        rot_change_count++;
+
     }
     else if(PIR1bits.ADIF && PIE1bits.ADIE){
         PIR1bits.ADIF = 0;
@@ -106,6 +112,12 @@ void interrupt int_high()
         flag_debug_status = 1;
 #endif
         LED_GREEN = !LED_GREEN;         // Green LED blink
+        IO_EXT_PORT =! IO_EXT_PORT;
+
+        // Store value for velocity calculation and reset the counter
+        rot_change_count_buffer = rot_change_count;
+        rot_change_count = 0;
+        flag_velocity_rdy = 1;
     }
 
 }

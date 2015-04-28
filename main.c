@@ -41,13 +41,13 @@ volatile unsigned char flags_status;    // status flag word
 bit flag_stop = 0 ;                         // stop motor
 bit flag_ADC_data_rdy = 0;                  // ADC conversion complete
 bit flag_SPI_data_rdy = 0;                  // new SPI data recieved
-// bit flag_veloc_rdy;                      // velocity meas. ready (not used)
+bit flag_velocity_rdy = 0;                      // velocity meas. ready
 #ifdef DEBUG_STATUS
 bit flag_debug_status = 0;
 #endif
 
 // Conditions
-struct_status status = {0,0,0,0};
+struct_status status = {0,0,0,0,0};
 
 // Requests
 unsigned int req_current = 0;
@@ -57,8 +57,8 @@ unsigned char req_motor_mode = 0;
 unsigned char RX_tab[RX_tab_size];    // SPI data receive tab
 unsigned char TX_tab[TX_tab_size];    // SPI data send tab
 
-// Timer 0
-unsigned char TMR0Config = 0;
+// Velocity calc
+extern unsigned int rot_change_count_buffer;
 
 // PCPWM
 unsigned int dutycycle = 0;         // PWM dutycycle
@@ -133,6 +133,10 @@ void main(void)
 
         if(flag_SPI_data_rdy){  // new SPI data?
             SPI_request_update();
+        }
+
+        if(flag_velocity_rdy){ // new velocity measurement data ready?
+            status.velocity = calc_velocity(rot_change_count_buffer);
         }
 
 #ifdef DEBUG_STATUS     // UART status debugging messages
@@ -355,20 +359,30 @@ void calc_ADC_data (void){
 
 /* Check if system condition is within operation limits */
 char limits_check(void){
-    if(status.motor_temp > M_TEMP_MAX) setbit(flags_status.FLT_T);
-    if(status.transistor_temp > T_TEMP_MAX) setbit(flags_status.FLT_T);
+    if(status.motor_temp > M_TEMP_MAX) setbit(flags_status,FLT_T);
+    else clrbit(flags_status,FLT_T);
+
+    if(status.transistor_temp > T_TEMP_MAX) setbit(flags_status,FLT_T);
+    else clrbit(flags_status,FLT_T);
+
     if((status.batt_voltage < V_BATT_MIN) || (status.batt_voltage >V_BATT_MAX))
-        setbit(flags_status.FLT_U);
+        setbit(flags_status,FLT_U);
+    else clrbit(flags_status,FLT_U);
     // SPI timeout is managed by Timer0 interrupt and overcurrent by PID
 
-    if(flags_error){
-#ifdef DEBUG_STATUS
-        char USART_dbg_msg[]="OpCond exceeded!\n\r";
-        putsUSART((char *)USART_dbg_msg);
-#endif
-        return(1);
-    }
+    if(flags_error) return(1);
     else return 0;
+}
+
+/* Calculate rotation speed from number of rot. hall sensor transitions */
+int calc_velocity(unsigned int transition_count){
+    // 10MHz clock: TMR0_period*sensor_positions ~ 0.83s/6 = 5.039
+    int velocity;
+
+    velocity = transition_count / 5;
+
+    flag_velocity_rdy = 0;
+    return velocity;
 }
 
 void PID(void){
@@ -405,8 +419,8 @@ void PID(void){
 
 #ifdef DEBUG_STATUS
 void debug_status(void){
-        char USART_dbg_msg[10];
-        sprintf(USART_dbg_msg,"REQ:%d\n\r",req_current);
+        char USART_dbg_msg[15];
+        sprintf(USART_dbg_msg,"\nREQ:%d\n\r",req_current);
         putsUSART((char *)USART_dbg_msg);
 
         sprintf(USART_dbg_msg,"STA:%d\n\r",status.current);
@@ -415,14 +429,22 @@ void debug_status(void){
         sprintf(USART_dbg_msg,"DTC:%d\n\r",dutycycle);
         putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_dbg_msg,"M_TEMP:%d\n\r",status.motor_temp);
+        sprintf(USART_dbg_msg,"M_TEMP:%d C\n\r",status.motor_temp);
         putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_dbg_msg,"T_TEMP:%d\n\r",status.transistor_temp);
+        sprintf(USART_dbg_msg,"T_TEMP:%d C\n\r",status.transistor_temp);
         putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_dbg_msg,"BATT:%d\n\n\r",status.batt_voltage);
+        sprintf(USART_dbg_msg,"BATT:%d dV\n\r",status.batt_voltage);
         putsUSART((char *)USART_dbg_msg);
+
+        sprintf(USART_dbg_msg,"Veloc:%d rps\n\r",status.velocity);
+        putsUSART((char *)USART_dbg_msg);
+
+        if(flags_error){
+            char USART_dbg_msg[]="OpCond exceeded!\n\r";
+            putsUSART((char *)USART_dbg_msg);
+        }
 
         return;
 }

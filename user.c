@@ -78,8 +78,9 @@ extern float BATT_ADC_8bittoV;
 
 void InitApp(void)
 {
-    LED_GREEN = 0;
-    LED_RED = 0;
+    /* Disable PWM outputs */
+    OVDCOND = 0;
+    set_dutycycle(0);
 
     /* Port initialization */
     PORTA = 0x00;
@@ -87,12 +88,11 @@ void InitApp(void)
     PORTC = 0x00;
     PORTD = 0x00;
 
-    /* Disable PWM outputs */
-    OVDCOND = 0;
-    set_dutycycle(0);
-
     /* Set "online" flag */
     setbit(flags_status,online);
+
+    LED_GREEN = 0;
+    LED_RED = 0;
 
     /********************  VSTUPY/VYSTUPY  ************************************/
     TRISCbits.RC3 = 0;    // LED2 output (RED)

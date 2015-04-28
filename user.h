@@ -52,6 +52,7 @@ typedef struct {
     unsigned char motor_temp;
     unsigned char transistor_temp;
     unsigned char batt_voltage;
+    int velocity;
 } struct_status;
 
 // Motor mode definitions
@@ -72,7 +73,7 @@ typedef struct {
 
 // Debugging outputs
 #define DEBUG_STATUS    // UART system status messages
-//#define DEBUG_PINS      // turn on debugging output pins
+#define DEBUG_PINS      // turn on debugging output pins
 //#define DEBUG_PID     // UART PID messages
 //#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
@@ -198,6 +199,9 @@ char limits_check(void);
 // Dutycycle
 void set_dutycycle (unsigned int dtc);
 void PID(void);
+
+// Velocity
+int calc_velocity(unsigned int transition_count);
 
 // Commutation asm routines
 void commutate_mot();   // TODO
