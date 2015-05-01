@@ -58,6 +58,12 @@ unsigned int rot_change_count_buffer = 0; // buffer for storing counter values
 // Requests
 extern unsigned int req_current;
 extern unsigned char req_motor_mode;
+extern int req_velocity;
+
+// PID without PhD
+extern SPid PID_status;
+unsigned int drive = 0;
+unsigned char PID_prescaler;
 
 
 /******************************************************************************/
@@ -157,32 +163,47 @@ void interrupt low_priority int_low()
         WriteTimer1(TMR1_50ms);
         /* TODO PID regulator */
 
-        // Begin Makeshift linear regulator
-        if(abs(req_current-status.current) >= 5){ // error big enough?
-            if(status.current < req_current){ // increase current
-                if(dutycycle < DTC_max)
-                    dutycycle = dutycycle + DTC_step;
-            }
-            else if (status.current > req_current){  // decrease current
-                if(dutycycle > DTC_min)
-                    dutycycle = dutycycle - DTC_step;
-            }
-            else dutycycle = 0;    // something went wrong, abort
+        if (PID_prescaler == 0) {
+            PID_prescaler = 5;
 
-#ifdef DEBUG_PID
-            char USART_dtc_msg[10];
+            // Begin PID without PhD
+            drive = (unsigned int) UpdatePID(&PID_status,  \
+                req_velocity - status.velocity, status.velocity);
+            if (drive <= DTC_MAX) set_dutycycle(drive);
+            else set_dutycycle(DTC_MAX);
 
-            sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
-            putsUSART((char *)USART_dtc_msg);
-
-            sprintf(USART_dtc_msg,"STA:%d\n\r",status.current);
-            putsUSART((char *)USART_dtc_msg);
-
-            sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
-            putsUSART((char *)USART_dtc_msg);
-#endif
+            char USART_dbg_msg[15];
+            sprintf(USART_dbg_msg, "\nPID:%d\n\r", drive);
+            putsUSART((char *) USART_dbg_msg);
         }
+        PID_prescaler--;
 
+//        // Begin Makeshift linear regulator
+//        if(abs(req_current-status.current) >= 5){ // error big enough?
+//            if(status.current < req_current){ // increase current
+//                if(dutycycle < DTC_MAX)
+//                    set_dutycycle(dutycycle + DTC_STEP);
+//            }
+//            else if (status.current > req_current){  // decrease current
+//                if(dutycycle > DTC_MIN)
+//                    set_dutycycle(dutycycle - DTC_STEP);
+//            }
+//            else set_dutycycle(0);    // something went wrong, abort
+//
+//#ifdef DEBUG_PID
+//            char USART_dtc_msg[10];
+//
+//            sprintf(USART_dtc_msg,"REQ:%d\n\r",req_current);
+//            putsUSART((char *)USART_dtc_msg);
+//
+//            sprintf(USART_dtc_msg,"STA:%d\n\r",status.current);
+//            putsUSART((char *)USART_dtc_msg);
+//
+//            sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
+//            putsUSART((char *)USART_dtc_msg);
+//#endif
+//        }
+//
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){
@@ -211,6 +232,13 @@ void interrupt low_priority int_low()
                 case '-' : {
                     if(req_current >= REQ_I_STEP)
                         req_current -= REQ_I_STEP; break;
+                }
+                case '1' : {
+                    req_velocity += REQ_V_STEP; break;
+                }
+                case '2' : {
+                    if(req_velocity >= REQ_V_STEP)
+                        req_velocity -= REQ_V_STEP; break;
                 }
             }
         }

@@ -51,6 +51,7 @@ struct_status status = {0,0,0,0,0};
 // Requests
 unsigned int req_current = 0;
 unsigned char req_motor_mode = 0;
+int req_velocity = 20;
 
 // SPI
 unsigned char RX_tab[RX_tab_size];    // SPI data receive tab
@@ -69,10 +70,8 @@ float LM335_ADC_8bittoV;        // for 8bit A/D result->voltage translation
 float Thermistor_ADC_8bittoV;
 float BATT_ADC_8bittoV;
 
-
 // PID
-unsigned char prescaler = 100;
-
+SPid PID_status = {0,0,10000,0,3,1,1};
 
 // Commutation table (for 3.0 hardware version)
 unsigned char pos1 = 0b00000110;      // PWM7 & PWM0 active
@@ -89,8 +88,7 @@ unsigned char pos6 = 0b00010010;      // PWM5 & PWM0 active
 
 void main(void)
 {
-    char ret;
-
+//    char USART_dbg_msg[15];
 
     /* Initialize I/O and Peripherals for application */
     InitApp();
@@ -102,7 +100,7 @@ void main(void)
     {
         if(!flags_error & !flag_stop){   // Everything OK?
             // No error
-            if((req_motor_mode == motor_mode) && (motor_mode)){
+            if((req_motor_mode == motor_mode) /*&& (motor_mode)*/){
                 asm("nop");     // everything ok..
             }
             else{
@@ -121,9 +119,11 @@ void main(void)
         if(flag_ADC_data_rdy){  // new A/D data?
             calc_ADC_data();
 
+            /*
             // Check condition limits
             ret = limits_check();
             if(ret) motor_halt;
+            */
         }
 
         if(flag_SPI_data_rdy){  // new SPI data?
@@ -132,6 +132,12 @@ void main(void)
 
         if(flag_velocity_rdy){ // new velocity measurement data ready?
             status.velocity = calc_velocity(rot_change_count_buffer);
+//            pid_out = PIDmain(status.velocity - req_velocity);
+//            sprintf(USART_dbg_msg,"\nPID:%d\n\r",pid_out);
+//            putsUSART((char *)USART_dbg_msg);
+//
+//            // This will probably overflow TODO: fix
+//            set_dutycycle(dutycycle+=pid_out);
         }
 
 #ifdef DEBUG_STATUS     // UART status debugging messages
@@ -152,6 +158,10 @@ void motor_halt(){
     set_dutycycle(0);
     flag_stop = 1;
     LED_RED = 1;
+
+    // PID reset
+    PID_status.dState = 0;
+    PID_status.iState = 0;
 }
 
 /* Set dutycycle value for all PWM channels */
@@ -211,7 +221,7 @@ void motor_init(unsigned char direction){
     }
     else motor_halt();
 
-    set_dutycycle(DTC_min);
+    set_dutycycle(DTC_MIN);
     PID_TIMER_ON = 1;
 }
 
@@ -376,10 +386,40 @@ int calc_velocity(unsigned int transition_count){
     // For TMR0 interrupt every second
     int velocity;
 
-    velocity = transition_count/6;  // Six sensor transitions per revolution
+    velocity = transition_count/6;  // RPS,Six sensor transitions/revolution
+
+#ifdef DEBUG_VELOCITY
+    char USART_dbg_msg[15];
+    sprintf(USART_dbg_msg, "\nRPS:%d\n\r", transition_count);
+    putsUSART((char *) USART_dbg_msg);
+#endif
 
     flag_velocity_rdy = 0;
     return velocity;
+}
+
+short long UpdatePID(SPid * pid, int error, int measure)
+{
+  int pTerm, dTerm, iTerm;
+
+  IO_EXT_PORT = 1;
+
+  pTerm = pid->pGain * error;   // calculate the proportional term
+
+// calculate the integral state with appropriate limiting
+  pid->iState += error;
+
+  if (pid->iState > pid->iMax) pid->iState = pid->iMax;
+  else if (pid->iState < pid->iMin) pid->iState = pid->iMin;
+
+  iTerm = pid->iGain * pid->iState;  // calculate the integral term
+
+  dTerm = pid->dGain * (pid->dState - measure);
+
+  pid->dState = measure;
+
+  IO_EXT_PORT = 0;
+  return (pTerm + dTerm + iTerm);
 }
 
 #ifdef DEBUG_STATUS
@@ -403,7 +443,7 @@ void debug_status(void){
         sprintf(USART_dbg_msg,"BATT:%d dV\n\r",status.batt_voltage);
         putsUSART((char *)USART_dbg_msg);
 
-        sprintf(USART_dbg_msg,"Veloc:%d rps\n\r",status.velocity);
+        sprintf(USART_dbg_msg,"Veloc:%d rpm\n\r",60*status.velocity);
         putsUSART((char *)USART_dbg_msg);
 
         if(flags_error){

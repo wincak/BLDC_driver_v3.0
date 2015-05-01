@@ -62,28 +62,38 @@
 // TMR2 max period @ 10MHz: 26ms
 // TMR5 max period @ 10MHz: 210 ms
 
-/* PWM definitions */
-#ifdef USE_PLL
-    // Period PWM: 40MHz, 0x00FF, UPDN => 9.8 kHz
-    #define PWM_PERIOD  0x01FE  // default PWM period
-    #define DTC_min     200     // change!
-    #define DTC_max     1500    // change!
-    #define DTC_step    100     // change! (for USART debug)
-#else
-    // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz
-    #define PWM_PERIOD  0x00FF  // default PWM period
-    #define DTC_min     100     // change!
-    #define DTC_max     750     // change!
-    #define DTC_step    50      // change! (for USART debug)
-#endif
-
-
 /* Operation condition limits */
 #define I_MAX   5   // Max current in Amps
 #define M_TEMP_MAX  50
 #define T_TEMP_MAX  80
 #define V_BATT_MIN  85  // in decivolts
 #define V_BATT_MAX  180
+
+/* PWM definitions */
+// Warning: for 100% dutycycle, DTC = 4*Period (No kidding)
+#ifdef USE_PLL
+    // Period PWM: 40MHz, 0x00FF, UPDN => 9.8 kHz
+    #define PWM_PERIOD  0x01FE  // default PWM period
+    #define DTC_MIN     200     // change!
+    #define DTC_MAX     1500    // change!
+    #define DTC_STEP    100     // change! (for USART debug)
+#else
+    // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz
+    #define PWM_PERIOD  255  // default PWM period
+    #define DTC_MIN     100     // change!
+    #define DTC_MAX     500     // change!
+    #define DTC_STEP    50      // change! (for USART debug)
+#endif
+
+// PID
+#define PID
+#define PID_TIMER_ON    T1CONbits.TMR1ON
+#define DERIVATIVE_GAIN     10  // max 15 (16 levels)
+#define INTEGRAL_GAIN       10  // max 15 (16 levels)
+#define PROPORTIONAL_GAIN   10  // max 15 (16 levels)
+#define PWM_PERIOD          255
+#define PID_SCALEDOWN       (DTC_MAX/INT_MAX)
+#define DERIV_PRESCALE      5   // Calculate delta error once in every x cycles
 
 /* Status LED definitions */
 #define LED_GREEN   LATDbits.LD0

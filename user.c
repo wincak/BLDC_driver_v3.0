@@ -107,6 +107,14 @@ void InitApp(void)
     FLT_EXT_TRIS = 0;
 #endif
 
+    /********************    FAULT CONFIG  ************************************/
+    FLTCONFIGbits.BRFEN = 1;    // Fault condition on breakpoint
+                                // odpoji vystupy pri breakpointu, dulezity pro
+                                // debugging
+    FLTCONFIGbits.FLTBMOD = 1;  // FLTB cleared automatically
+    FLTCONFIGbits.FLTBEN = 1;   // Fault B enable
+    FLTCONFIGbits.FLTCON = 1;   // Deactivate all PWMs on fault
+
 #ifndef UART_CONTROL
     /***********************   SPI   ******************************************/
     TRISDbits.RD1 = 0;      // serial data out
@@ -238,6 +246,8 @@ void InitApp(void)
 
     /********************   TIMER 1  ******************************************/
     // PID timer
+    CloseTimer1();  // stay off, Timer1
+
 #ifdef USE_PLL
     TMR1Config = TIMER_INT_ON & T1_16BIT_RW & T1_SOURCE_INT & T1_PS_1_8
             & T1_OSC1EN_ON;
@@ -247,6 +257,7 @@ void InitApp(void)
 #endif
     WriteTimer1(TMR1_50ms);
     OpenTimer1(TMR1Config);
+    PID_TIMER_ON = 0;       // No, really, stay off!
     IPR1bits.TMR1IP = 0;    // low priority interrupt
 
     /***********************  PCPWM  ******************************************/

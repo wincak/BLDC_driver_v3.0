@@ -72,12 +72,13 @@ typedef struct {
 #define FLT_EXT_PORT    PORTDbits.RD4
 
 // Debugging outputs
-#define DEBUG_STATUS    // UART system status messages
+//#define DEBUG_STATUS    // UART system status messages
 #define DEBUG_PINS      // turn on debugging output pins
 //#define DEBUG_PID     // UART PID messages
 //#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
 //#define DEBUG_BATT_VOLTAGE        // UART battery voltage messages
+#define DEBUG_VELOCITY
 
 // SPI
 #define TX_tab_size     9   // 8 data + 1 null terminator
@@ -109,12 +110,23 @@ typedef struct {
 #define ADC_H_BATT_VOLTAGE      6
 
 // UART
-#define REQ_I_STEP  10
+#define REQ_I_STEP  10      // I-current control
 #define REQ_I_MAX   100
 #define REQ_I_MIN   0
+#define REQ_V_STEP  100     // V-Velocity control
+#define REQ_V_MAX   5000
 
-// PID
-#define PID_TIMER_ON    T1CONbits.TMR1ON
+// PID without PhD
+typedef struct
+{
+  short long dState;      	// Last position input
+  short long iState;      	// Integrator state
+  short long iMax, iMin;  	// Maximum and minimum allowable integrator state
+
+  int   pGain,    	// proportional gain
+        iGain,    	// integral gain
+        dGain;     	// derivative gain
+} SPid;
 
 /******************************************************************************/
 /* User Variables initialization                                              */
@@ -198,8 +210,13 @@ char limits_check(void);
 
 // Dutycycle
 void set_dutycycle (unsigned int dtc);
+
 // Velocity
 int calc_velocity(unsigned int transition_count);
+
+// PID
+//int PIDmain(int error);
+short long UpdatePID(SPid * pid, int error, int position);
 
 // Commutation asm routines
 void commutate_mot();   // TODO
