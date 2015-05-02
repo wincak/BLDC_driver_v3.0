@@ -73,6 +73,8 @@ unsigned char PID_prescaler;
 /* High-priority service */
 void interrupt int_high()
 {
+    // All IC input changes are recognized as one event
+    // Note: is it more efficient to differentiate them?
     if(PIR3bits.IC1IF || PIR3bits.IC2QEIF || PIR3bits.IC3DRIF){
         PIR3bits.IC1IF = 0; PIR3bits.IC2QEIF = 0; PIR3bits.IC3DRIF = 0;
 
@@ -171,13 +173,15 @@ void interrupt low_priority int_low()
                 req_velocity - status.velocity, status.velocity);
             if (drive <= DTC_MAX) set_dutycycle(drive);
             else set_dutycycle(DTC_MAX);
-
+#ifdef DEBUG_PID
             char USART_dbg_msg[15];
             sprintf(USART_dbg_msg, "\nPID:%d\n\r", drive);
             putsUSART((char *) USART_dbg_msg);
+#endif
         }
         PID_prescaler--;
 
+        
 //        // Begin Makeshift linear regulator
 //        if(abs(req_current-status.current) >= 5){ // error big enough?
 //            if(status.current < req_current){ // increase current

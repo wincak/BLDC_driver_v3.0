@@ -64,6 +64,7 @@ typedef struct {
 #define mode_brake      0b111
 #define CW  1
 #define CCW 2
+#define mode_regen      0b100   // must check_direction first
 
 // EXT pins definition and control
 #define IO_EXT_TRIS     TRISDbits.RD5
@@ -73,12 +74,13 @@ typedef struct {
 
 // Debugging outputs
 //#define DEBUG_STATUS    // UART system status messages
-#define DEBUG_PINS      // turn on debugging output pins
+//#define DEBUG_PINS      // turn on debugging output pins
 //#define DEBUG_PID     // UART PID messages
 //#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
 //#define DEBUG_BATT_VOLTAGE        // UART battery voltage messages
 #define DEBUG_VELOCITY
+#define INSTANT_START
 
 // SPI
 #define TX_tab_size     9   // 8 data + 1 null terminator
@@ -207,6 +209,7 @@ void calc_ADC_data (void);
 
 // Condition check
 char limits_check(void);
+void check_direction(void);
 
 // Dutycycle
 void set_dutycycle (unsigned int dtc);

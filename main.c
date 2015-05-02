@@ -30,6 +30,7 @@
 #include "system.h"        /* System funct/params, like osc/peripheral config */
 #include "user.h"          /* User funct/params, such as InitApp */
 #include <plib/delays.h>
+#include <plib/pcpwm.h>
 
 /******************************************************************************/
 /* User Global Variable Declaration                                           */
@@ -51,7 +52,7 @@ struct_status status = {0,0,0,0,0};
 // Requests
 unsigned int req_current = 0;
 unsigned char req_motor_mode = 0;
-int req_velocity = 20;
+int req_velocity = 0;
 
 // SPI
 unsigned char RX_tab[RX_tab_size];    // SPI data receive tab
@@ -62,7 +63,7 @@ extern unsigned int rot_change_count_buffer;
 
 // PCPWM
 unsigned int dutycycle = 0;         // PWM dutycycle
-extern unsigned int PCPWMPeriod;    // Can be 1/4 of dutycycle!! Weird prescaler
+extern unsigned int PCPWM_Mot_Period;    // Can be 1/4 of dutycycle!! Weird prescaler
 
 // ADC
 unsigned char ADC_tab[ADC_tab_size];       // A/D result tab
@@ -70,8 +71,17 @@ float LM335_ADC_8bittoV;        // for 8bit A/D result->voltage translation
 float Thermistor_ADC_8bittoV;
 float BATT_ADC_8bittoV;
 
+// PCPWM
+/* Motoring Mode */
+extern unsigned char PCPWM_Mot_Config0;
+extern unsigned char PCPWM_Mot_Config1;
+extern unsigned char PCPWM_Mot_Config2;
+extern unsigned char PCPWM_Mot_Config3;
+extern unsigned int PCPWM_Mot_Period;
+extern unsigned int PCPWM_Mot_Sptime;
+
 // PID
-SPid PID_status = {0,0,10000,0,3,1,1};
+SPid PID_status = {0,0,10000,0,10,6,5};
 
 // Commutation table (for 3.0 hardware version)
 unsigned char pos1 = 0b00000110;      // PWM7 & PWM0 active
@@ -88,13 +98,21 @@ unsigned char pos6 = 0b00010010;      // PWM5 & PWM0 active
 
 void main(void)
 {
-//    char USART_dbg_msg[15];
+    unsigned char ret = 0;
 
+    
     /* Initialize I/O and Peripherals for application */
     InitApp();
 
     /* Calculate constants */
     //TabGen();     // required too much memory...
+
+    /* Instant start: non-controlled mode */
+#ifdef INSTANT_START
+    req_motor_mode = mode_regen_CCW;
+    //req_motor_mode = mode_motor_CW;
+    //req_velocity = 33;
+#endif
 
     do    // main program loop
     {
@@ -107,6 +125,8 @@ void main(void)
                 switch (req_motor_mode){    // change motor mode
                     case mode_motor_CW: motor_init(CW); break;
                     case mode_motor_CCW: motor_init(CCW); break;
+                    case mode_regen: check_direction(); break;
+                    // Regen rotation manual set for debug ONLY!
                     case mode_regen_CW: regen_init(CW); break;
                     case mode_regen_CCW: regen_init(CCW); break;
                     case mode_free_run: free_run_init(); break;
@@ -119,11 +139,11 @@ void main(void)
         if(flag_ADC_data_rdy){  // new A/D data?
             calc_ADC_data();
 
-            /*
+            
             // Check condition limits
             ret = limits_check();
             if(ret) motor_halt;
-            */
+            
         }
 
         if(flag_SPI_data_rdy){  // new SPI data?
@@ -132,12 +152,6 @@ void main(void)
 
         if(flag_velocity_rdy){ // new velocity measurement data ready?
             status.velocity = calc_velocity(rot_change_count_buffer);
-//            pid_out = PIDmain(status.velocity - req_velocity);
-//            sprintf(USART_dbg_msg,"\nPID:%d\n\r",pid_out);
-//            putsUSART((char *)USART_dbg_msg);
-//
-//            // This will probably overflow TODO: fix
-//            set_dutycycle(dutycycle+=pid_out);
         }
 
 #ifdef DEBUG_STATUS     // UART status debugging messages
@@ -159,6 +173,9 @@ void motor_halt(){
     flag_stop = 1;
     LED_RED = 1;
 
+    Closepcpwm();
+    LATB = 0;
+
     // PID reset
     PID_status.dState = 0;
     PID_status.iState = 0;
@@ -178,6 +195,11 @@ void motor_init(unsigned char direction){
     unsigned char USART_CW_msg[] = "CW  \r";
     unsigned char USART_CCW_msg[] = "CCW \r";
 
+    // Configure & enable PCPWM Module
+    LATB = 0;
+    Openpcpwm(PCPWM_Mot_Config0, PCPWM_Mot_Config1, PCPWM_Mot_Config2,
+            PCPWM_Mot_Config3, PCPWM_Mot_Period, PCPWM_Mot_Sptime);
+
 
 #ifdef CHARGE_BOOTSTRAPS    /* TODO Bootstrap charging procedure */
     /* Charging bootstraps */
@@ -185,50 +207,97 @@ void motor_init(unsigned char direction){
                             // and avoid shortcuts
 
 #endif
-    if(direction == CW){    // init CW commutation
-        putsUSART((char *)USART_CW_msg);
+    // Motoring mode needs to find out rotor position to turn on the motor,
+    // see commutation_asm.c for more info
+    // Note: how about flipping the IC interrupt flag manually here?
+    if (direction == CW) { // init CW commutation
+        putsUSART((char *) USART_CW_msg);
 
         // change motor mode bits
-        clrbit(flags_status,2);
-        clrbit(flags_status,1);
-        setbit(flags_status,0);
+        clrbit(flags_status, 2);
+        clrbit(flags_status, 1);
+        setbit(flags_status, 0);
 
         OVDCONS = 0;
-        if(!HALL_A & !HALL_B & HALL_C) OVDCOND = pos1;
-        else if(!HALL_A & HALL_B & HALL_C) OVDCOND = pos2;
-        else if(!HALL_A & HALL_B & !HALL_C) OVDCOND = pos3;
-        else if(HALL_A & HALL_B & !HALL_C) OVDCOND = pos4;
-        else if(HALL_A & !HALL_B & !HALL_C) OVDCOND = pos5;
-        else if(HALL_A & !HALL_B & HALL_C) OVDCOND = pos6;
-        else motor_halt();   // error
-    }
-    else if(direction == CCW){  // init CCW commutation
-        putsUSART((char *)USART_CCW_msg);
+        if (!HALL_A & !HALL_B & HALL_C) OVDCOND = pos1;
+        else if (!HALL_A & HALL_B & HALL_C) OVDCOND = pos2;
+        else if (!HALL_A & HALL_B & !HALL_C) OVDCOND = pos3;
+        else if (HALL_A & HALL_B & !HALL_C) OVDCOND = pos4;
+        else if (HALL_A & !HALL_B & !HALL_C) OVDCOND = pos5;
+        else if (HALL_A & !HALL_B & HALL_C) OVDCOND = pos6;
+        else motor_halt(); // error
+    
+    } else if (direction == CCW) { // init CCW commutation
+        putsUSART((char *) USART_CCW_msg);
 
         // change motor mode bits
-        clrbit(flags_status,2);
-        setbit(flags_status,1);
-        clrbit(flags_status,0);
+        clrbit(flags_status, 2);
+        setbit(flags_status, 1);
+        clrbit(flags_status, 0);
 
         OVDCONS = 0;
-        if(!HALL_A & !HALL_B & HALL_C) OVDCOND = pos4;
-        else if(!HALL_A & HALL_B & HALL_C) OVDCOND = pos5;
-        else if(!HALL_A & HALL_B & !HALL_C) OVDCOND = pos6;
-        else if(HALL_A & HALL_B & !HALL_C) OVDCOND = pos1;
-        else if(HALL_A & !HALL_B & !HALL_C) OVDCOND = pos2;
-        else if(HALL_A & !HALL_B & HALL_C) OVDCOND = pos3;
-        else motor_halt();// error
-    }
-    else motor_halt();
+        if (!HALL_A & !HALL_B & HALL_C) OVDCOND = pos4;
+        else if (!HALL_A & HALL_B & HALL_C) OVDCOND = pos5;
+        else if (!HALL_A & HALL_B & !HALL_C) OVDCOND = pos6;
+        else if (HALL_A & HALL_B & !HALL_C) OVDCOND = pos1;
+        else if (HALL_A & !HALL_B & !HALL_C) OVDCOND = pos2;
+        else if (HALL_A & !HALL_B & HALL_C) OVDCOND = pos3;
+        else motor_halt(); // error
+    } else motor_halt();
 
     set_dutycycle(DTC_MIN);
     PID_TIMER_ON = 1;
 }
 
 /* Switch motor to regenerative braking mode */
-void regen_init(unsigned char direction){
+void regen_init(unsigned char direction) {
+    unsigned char USART_CW_msg[] = "GEN  \r";
     /* TODO Regen braking initialization*/
-    asm("nop");
+    Closepcpwm();
+    LATB = 0;
+    TRISBbits.RB0 = 0;
+    TRISBbits.RB2 = 0;
+    TRISBbits.RB5 = 0;
+
+    if (direction == CW) {
+        // change motor mode bits
+        setbit(flags_status, 2);
+        clrbit(flags_status, 1);
+        setbit(flags_status, 0);
+
+        //putsUSART((char *) USART_CW_msg);
+    } else if (direction == CCW) {
+        // change motor mode bits
+        setbit(flags_status, 2);
+        setbit(flags_status, 1);
+        clrbit(flags_status, 0);
+        
+    } else motor_halt();
+
+}
+
+// This is NOT WORKING now, direction must be set manually.
+// quite tricky to find it out automatically....
+/* Before regenerative braking starts, rotation direction must be known */
+void check_direction(void){
+    // WARN! This routine will be quite messy if the motor gets locked...
+    unsigned char position_buffer;
+
+    while(status.velocity < 5);     // waiting for rotation
+
+    while ((PORTA & HALL_MASK) != 0b00010000); // wait for position 1
+
+    while((PORTA & HALL_MASK) == 0b00010000); // wait for next position
+
+    position_buffer = PORTA & HALL_MASK;   // read second value
+
+    if(position_buffer == 0b00011000)      // is position 2 the next?
+        regen_init(CW);
+    else if(position_buffer == 0b00010100) // how about position 6?
+        regen_init(CCW);
+    else motor_halt();  // must be an error
+
+    return;
 }
 
 /* Switch motor to free run mode */
@@ -239,6 +308,9 @@ void free_run_init(){
     OVDCOND = 0;
     PID_TIMER_ON = 0;
     set_dutycycle(0);
+
+    Closepcpwm();
+    LATB = 0;
 
     // Change motor mode bits
     clrbit(flags_status,2);
@@ -314,7 +386,7 @@ void calc_ADC_data (void){
     // remove offset (bear in mind voltage loss along copper trace)
     current_buffer = current_buffer - HALL_U_OFFSET;
     // average for one period
-    current_current = ((current_buffer*dutycycle)/(4*PCPWMPeriod));
+    current_current = ((current_buffer*dutycycle)/(4*PCPWM_Mot_Period));
     // save into global status register
     status.current = current_current;
 
@@ -390,7 +462,7 @@ int calc_velocity(unsigned int transition_count){
 
 #ifdef DEBUG_VELOCITY
     char USART_dbg_msg[15];
-    sprintf(USART_dbg_msg, "\nRPS:%d\n\r", transition_count);
+    sprintf(USART_dbg_msg, "RPS:%d\n\r", velocity);
     putsUSART((char *) USART_dbg_msg);
 #endif
 
@@ -400,7 +472,7 @@ int calc_velocity(unsigned int transition_count){
 
 short long UpdatePID(SPid * pid, int error, int measure)
 {
-  int pTerm, dTerm, iTerm;
+  short long pTerm, dTerm, iTerm;
 
   IO_EXT_PORT = 1;
 
@@ -419,7 +491,7 @@ short long UpdatePID(SPid * pid, int error, int measure)
   pid->dState = measure;
 
   IO_EXT_PORT = 0;
-  return (pTerm + dTerm + iTerm);
+  return (pTerm + dTerm + iTerm)/10;
 }
 
 #ifdef DEBUG_STATUS

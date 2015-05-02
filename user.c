@@ -55,12 +55,20 @@ unsigned char baudconfig = 0;
 #endif
 
 // PCPWM
-unsigned char PCPWMConfig0 = 0;
-unsigned char PCPWMConfig1 = 0;
-unsigned char PCPWMConfig2 = 0;
-unsigned char PCPWMConfig3 = 0;
-unsigned int PCPWMPeriod = 0;
-unsigned int PCPWMSptime = 0;
+/* Motoring Config */
+unsigned char PCPWM_Mot_Config0 = 0;
+unsigned char PCPWM_Mot_Config1 = 0;
+unsigned char PCPWM_Mot_Config2 = 0;
+unsigned char PCPWM_Mot_Config3 = 0;
+unsigned int PCPWM_Mot_Period = 0;
+unsigned int PCPWM_Mot_Sptime = 0;
+/* Generator Config */
+unsigned char PCPWM_Gen_Config0 = 0;
+unsigned char PCPWM_Gen_Config1 = 0;
+unsigned char PCPWM_Gen_Config2 = 0;
+unsigned char PCPWM_Gen_Config3 = 0;
+unsigned int PCPWM_Gen_Period = 0;
+unsigned int PCPWM_Gen_Sptime = 0;
 
 // Timers
 unsigned char TMR0Config = 0;
@@ -262,27 +270,30 @@ void InitApp(void)
 
     /***********************  PCPWM  ******************************************/
     // Comments:
-    // check PTCON0 postscale-reason why pwm timer counts by adding 4?
+    // Be careful with dutycycle/period values, check system.h
     // PWMCON1 - spec event trigger postscale (for ADC)
     // PCPWM init
-    PCPWMConfig0 = PWM_IO_ALL & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
-            & PWM_4AND5_INDPEN & PWM_6AND7_INDPEN;
-    PCPWMConfig1 = PW_SEVT_POS_1_16 & PW_SEVT_DIR_UP & PW_OP_SYNC;
-    PCPWMConfig2 = PT_POS_1_16 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
-    PCPWMConfig3 = PT_ENABLE & PT_CNT_UP;   // warn: this is correct,
-                                            // comment in plib is wrong
-    PCPWMPeriod = PWM_PERIOD;
+    LATB = 0;   // clear PORTB output latches
 
-    PCPWMSptime = 0x01; // 0x01 means trigger for A/D conversion right in
+    /* Set configuration variables for Motoring Mode*/
+    PCPWM_Mot_Config0 = PWM_IO_ALL & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
+            & PWM_4AND5_INDPEN & PWM_6AND7_INDPEN;
+    PCPWM_Mot_Config1 = PW_SEVT_POS_1_16 & PW_SEVT_DIR_UP & PW_OP_SYNC;
+    PCPWM_Mot_Config2 = PT_POS_1_16 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
+    PCPWM_Mot_Config3 = PT_ENABLE & PT_CNT_UP;   // warn: this is correct,
+                                            // comment in plib is wrong
+    PCPWM_Mot_Period = PWM_PERIOD;
+
+    PCPWM_Mot_Sptime = 0x01; // 0x01 means trigger for A/D conversion right in
                         // the middle of PWM pulse
+
+    /* Set configuration variables for Generator Mode */
+    // TODO: PCPWM Generator mode settings
 
     set_dutycycle(0);
 
-    Openpcpwm(PCPWMConfig0, PCPWMConfig1, PCPWMConfig2, PCPWMConfig3,
-            PCPWMPeriod, PCPWMSptime);
-
     TRISBbits.RB2 = 1;  // channel 7 & 8 pins
-    TRISBbits.RB3 = 1;  // set as output
+    TRISBbits.RB3 = 1;  // set as input
 
     PIE3bits.PTIE = 0;  // PWM time base interrupt enable/disable
     PIR3bits.PTIF = 0;  // PWM time base interrupt clear

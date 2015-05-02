@@ -32,6 +32,12 @@ unsigned char hall_pos4 = 0b00001100;
 unsigned char hall_pos5 = 0b00000100;
 unsigned char hall_pos6 = 0b00010100;
 
+// Generator switch tab
+/* Low side switching combinations */
+unsigned char set_LA = 0b00000001;
+unsigned char set_LB = 0b00000100;
+unsigned char set_LC = 0b00100000;  // RB4 and RB5 are switched in hardware
+
 extern unsigned char flags_status;
 extern unsigned char hall_cur;
 
@@ -44,9 +50,9 @@ void commutate_mot(void){
 
 #asm
 
-com_cw:
+mot_cw:
     btfsc   _flags_status,1  ; Motor mode xx1 ?
-        bra com_rev         ; reverse
+        bra mot_ccw         ; reverse
 
 rot1_cw:
     movf    _hall_pos1,w
@@ -83,7 +89,7 @@ rot6_cw:
     movwf   OVDCONS
     return
 
-com_rev:
+mot_ccw:
 
 rot1_ccw:
     movf    _hall_pos1,w
@@ -143,7 +149,108 @@ pos_6:
 
 }
 
-void commutate_gen(void){
-    // TODO Regen braking commutation routine
-    asm("nop");
+void commutate_gen(void) {
+    // First try: Simple turning of low side transistors to reduce voltage
+    // drop on builtin transistor diodes.
+
+    hall_cur = PORTA & HALL_MASK;
+
+#asm
+
+gen_cw:
+btfsc   _flags_status,1  ; Motor mode xx1 ?
+    bra gen_ccw         ; reverse
+
+gen1:
+    movf    _hall_pos1,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_1
+gen2:
+    movf    _hall_pos2,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_2
+gen3:
+    movf    _hall_pos3,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_3
+gen4:
+    movf    _hall_pos4,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_4
+gen5:
+    movf    _hall_pos5,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_5
+gen6:
+    movf    _hall_pos6,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_6
+
+    movlw   0x00        ; error
+    movwf   LATB        ; disable outputs
+    return
+
+gen_ccw:
+
+gen1_ccw:
+    movf    _hall_pos1,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_4
+gen2_ccw:
+    movf    _hall_pos2,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_5
+gen3_ccw:
+    movf    _hall_pos3,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_6
+gen4_ccw:
+    movf    _hall_pos4,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_1
+gen5_ccw:
+    movf    _hall_pos5,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_2
+gen6_ccw:
+    movf    _hall_pos6,w
+    subwf   _hall_cur,w
+    btfsc   STATUS,2
+        goto    gen_pos_3
+
+movlw   0x00        ; error
+movwf   LATB     ; disable PWM outputs
+return
+
+;---------------------------------------------
+gen_pos_1:
+    movff   _set_LB,LATB
+    return
+gen_pos_2:
+    movff   _set_LB,LATB
+    return
+gen_pos_3:
+    movff   _set_LA,LATB
+    return
+gen_pos_4:
+    movff   _set_LA,LATB
+    return
+gen_pos_5:
+    movff   _set_LC,LATB
+    return
+gen_pos_6:
+    movff   _set_LC,LATB
+    return
+#endasm
 }

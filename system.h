@@ -88,12 +88,6 @@
 // PID
 #define PID
 #define PID_TIMER_ON    T1CONbits.TMR1ON
-#define DERIVATIVE_GAIN     10  // max 15 (16 levels)
-#define INTEGRAL_GAIN       10  // max 15 (16 levels)
-#define PROPORTIONAL_GAIN   10  // max 15 (16 levels)
-#define PWM_PERIOD          255
-#define PID_SCALEDOWN       (DTC_MAX/INT_MAX)
-#define DERIV_PRESCALE      5   // Calculate delta error once in every x cycles
 
 /* Status LED definitions */
 #define LED_GREEN   LATDbits.LD0
