@@ -79,6 +79,13 @@ extern unsigned char PCPWM_Mot_Config2;
 extern unsigned char PCPWM_Mot_Config3;
 extern unsigned int PCPWM_Mot_Period;
 extern unsigned int PCPWM_Mot_Sptime;
+/* Generator mode */
+extern unsigned char PCPWM_Gen_Config0;
+extern unsigned char PCPWM_Gen_Config1;
+extern unsigned char PCPWM_Gen_Config2;
+extern unsigned char PCPWM_Gen_Config3;
+extern unsigned int PCPWM_Gen_Period;
+extern unsigned int PCPWM_Gen_Sptime;
 
 // PID
 SPid PID_status = {0,0,10000,0,10,6,5};
@@ -168,13 +175,13 @@ void main(void)
 /* Stop motor on error and set error conditions */
 void motor_halt(){
     OVDCOND = 0;
+    OVDCONS = 0;
     PID_TIMER_ON = 0;
     set_dutycycle(0);
     flag_stop = 1;
     LED_RED = 1;
 
     Closepcpwm();
-    LATB = 0;
 
     // PID reset
     PID_status.dState = 0;
@@ -197,6 +204,7 @@ void motor_init(unsigned char direction){
 
     // Configure & enable PCPWM Module
     LATB = 0;
+    OVDCONS = 0;
     Openpcpwm(PCPWM_Mot_Config0, PCPWM_Mot_Config1, PCPWM_Mot_Config2,
             PCPWM_Mot_Config3, PCPWM_Mot_Period, PCPWM_Mot_Sptime);
 
@@ -218,7 +226,6 @@ void motor_init(unsigned char direction){
         clrbit(flags_status, 1);
         setbit(flags_status, 0);
 
-        OVDCONS = 0;
         if (!HALL_A & !HALL_B & HALL_C) OVDCOND = pos1;
         else if (!HALL_A & HALL_B & HALL_C) OVDCOND = pos2;
         else if (!HALL_A & HALL_B & !HALL_C) OVDCOND = pos3;
@@ -235,7 +242,6 @@ void motor_init(unsigned char direction){
         setbit(flags_status, 1);
         clrbit(flags_status, 0);
 
-        OVDCONS = 0;
         if (!HALL_A & !HALL_B & HALL_C) OVDCOND = pos4;
         else if (!HALL_A & HALL_B & HALL_C) OVDCOND = pos5;
         else if (!HALL_A & HALL_B & !HALL_C) OVDCOND = pos6;
@@ -251,9 +257,11 @@ void motor_init(unsigned char direction){
 
 /* Switch motor to regenerative braking mode */
 void regen_init(unsigned char direction) {
-    unsigned char USART_CW_msg[] = "GEN  \r";
+    //unsigned char USART_CW_msg[] = "GEN  \r";
     /* TODO Regen braking initialization*/
     Closepcpwm();
+    OVDCOND = 0;
+    OVDCONS = 0;
     LATB = 0;
     TRISBbits.RB0 = 0;
     TRISBbits.RB2 = 0;
@@ -273,6 +281,10 @@ void regen_init(unsigned char direction) {
         clrbit(flags_status, 0);
         
     } else motor_halt();
+
+    Openpcpwm(PCPWM_Gen_Config0, PCPWM_Gen_Config1, PCPWM_Gen_Config2,
+            PCPWM_Gen_Config3, PCPWM_Gen_Period, PCPWM_Gen_Sptime);
+    set_dutycycle(2);
 
 }
 

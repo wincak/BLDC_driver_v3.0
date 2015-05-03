@@ -273,7 +273,6 @@ void InitApp(void)
     // Be careful with dutycycle/period values, check system.h
     // PWMCON1 - spec event trigger postscale (for ADC)
     // PCPWM init
-    LATB = 0;   // clear PORTB output latches
 
     /* Set configuration variables for Motoring Mode*/
     PCPWM_Mot_Config0 = PWM_IO_ALL & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
@@ -282,14 +281,21 @@ void InitApp(void)
     PCPWM_Mot_Config2 = PT_POS_1_16 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
     PCPWM_Mot_Config3 = PT_ENABLE & PT_CNT_UP;   // warn: this is correct,
                                             // comment in plib is wrong
-    PCPWM_Mot_Period = PWM_PERIOD;
-
+    PCPWM_Mot_Period = PWM_MOT_PERIOD;
     PCPWM_Mot_Sptime = 0x01; // 0x01 means trigger for A/D conversion right in
                         // the middle of PWM pulse
 
     /* Set configuration variables for Generator Mode */
-    // TODO: PCPWM Generator mode settings
+    PCPWM_Gen_Config0 = PWM_IO_0TO5 & PWM_0AND1_INDPEN & PWM_2AND3_INDPEN
+            & PWM_4AND5_INDPEN;
+    PCPWM_Gen_Config1 = PW_SEVT_POS_1_16 & PW_SEVT_DIR_UP & PW_OP_SYNC;
+    PCPWM_Gen_Config2 = PT_POS_1_16 & PT_PRS_1_1 & PT_MOD_CNT_UPDN;
+    PCPWM_Gen_Config3 = PT_ENABLE & PT_CNT_UP;
 
+    PCPWM_Gen_Period = PWM_GEN_PERIOD;
+    PCPWM_Gen_Sptime = 0x01;
+
+    /* Common config */
     set_dutycycle(0);
 
     TRISBbits.RB2 = 1;  // channel 7 & 8 pins

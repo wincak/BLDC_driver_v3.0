@@ -238,11 +238,10 @@ void interrupt low_priority int_low()
                         req_current -= REQ_I_STEP; break;
                 }
                 case '1' : {
-                    req_velocity += REQ_V_STEP; break;
+                    set_dutycycle(dutycycle +1); break;
                 }
                 case '2' : {
-                    if(req_velocity >= REQ_V_STEP)
-                        req_velocity -= REQ_V_STEP; break;
+                    set_dutycycle(dutycycle -1); break;
                 }
             }
         }

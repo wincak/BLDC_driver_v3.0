@@ -34,9 +34,13 @@ unsigned char hall_pos6 = 0b00010100;
 
 // Generator switch tab
 /* Low side switching combinations */
+// Be careful about RB4/PWM5 and RB5/PWM4
 unsigned char set_LA = 0b00000001;
 unsigned char set_LB = 0b00000100;
-unsigned char set_LC = 0b00100000;  // RB4 and RB5 are switched in hardware
+unsigned char set_LC = 0b00010000;
+unsigned char set_HA = 0b00000010;
+unsigned char set_HB = 0b00001000;
+unsigned char set_HC = 0b00100000;
 
 extern unsigned char flags_status;
 extern unsigned char hall_cur;
@@ -235,22 +239,28 @@ return
 
 ;---------------------------------------------
 gen_pos_1:
-    movff   _set_LB,LATB
+    movff   _set_LB,OVDCONS
+    movff   _set_LA,OVDCOND
     return
 gen_pos_2:
-    movff   _set_LB,LATB
+    movff   _set_LB,OVDCONS
+    movff   _set_LC,OVDCOND
     return
 gen_pos_3:
-    movff   _set_LA,LATB
+    movff   _set_LA,OVDCONS
+    movff   _set_LC,OVDCOND
     return
 gen_pos_4:
-    movff   _set_LA,LATB
+    movff   _set_LA,OVDCONS
+    movff   _set_LB,OVDCOND
     return
 gen_pos_5:
-    movff   _set_LC,LATB
+    movff   _set_LC,OVDCONS
+    movff   _set_LB,OVDCOND
     return
 gen_pos_6:
-    movff   _set_LC,LATB
+    movff   _set_LC,OVDCONS
+    movff   _set_LA,OVDCOND
     return
 #endasm
 }

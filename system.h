@@ -73,13 +73,15 @@
 // Warning: for 100% dutycycle, DTC = 4*Period (No kidding)
 #ifdef USE_PLL
     // Period PWM: 40MHz, 0x00FF, UPDN => 9.8 kHz
-    #define PWM_PERIOD  0x01FE  // default PWM period
+    #define PWM_MOT_PERIOD  0x01FE  // default PWM motoring mode period
+    #define PWM_GEN_PERIOD  0x01FE  // default PWM generator mode period
     #define DTC_MIN     200     // change!
     #define DTC_MAX     1500    // change!
     #define DTC_STEP    100     // change! (for USART debug)
 #else
     // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz
-    #define PWM_PERIOD  255  // default PWM period
+    #define PWM_MOT_PERIOD  255  // default PWM motoring period
+    #define PWM_GEN_PERIOD  100  // default PWM generator mode period
     #define DTC_MIN     100     // change!
     #define DTC_MAX     500     // change!
     #define DTC_STEP    50      // change! (for USART debug)
