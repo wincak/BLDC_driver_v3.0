@@ -102,7 +102,7 @@
 
 // SPI
 #define SLAVE_SELECT    PORTCbits.RC5
-#define SPI_ADDRESS 0x31    // ASCII: 0x31=='1', 0x32=='2'
+#define SPI_ADDRESS     0x31    // ASCII: 0x31=='1', 0x32=='2'
 #define SPI_CONTROL
 #define SPI_TIMEOUT_DISABLE
 

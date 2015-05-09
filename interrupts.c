@@ -136,12 +136,17 @@ void interrupt low_priority int_low() {
     // SPI data exchange
     if (INTCON3bits.INT2IF && INTCON3bits.INT2IE) {
         INTCON3bits.INT2IF = 0;
-        unsigned char address, tmp;
+        PIR1bits.SSPIF = 0;
+        unsigned char address, timeout;
 
         LED_RED = 1;
         SSPCONbits.SSPEN = 1;   // turn on SPI
         SSPBUF=0;
-        while (!SSPSTATbits.BF); // wait for buffer to be full (potential lockup)
+
+        timeout = 1000; // wait
+        while (!SSPSTATbits.BF && timeout > 0){    // wait for buffer to be full (potential lockup)
+            timeout--;
+        }
         address = SSPBUF;
 
         if (address == SPI_ADDRESS) {
@@ -152,7 +157,7 @@ void interrupt low_priority int_low() {
         }
         SSPBUF=0;
         SSPCONbits.SSPEN = 0;   // turn off SPI
-        
+                
         // SPI Communication status okay
         WriteTimer0(0x0000); // SPI timeout timer clear
         clrbit(flags_status, comm_error); // comm_err flag clear

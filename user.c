@@ -104,8 +104,11 @@ void InitApp(void)
     LED_RED = 0;
 
     /********************  VSTUPY/VYSTUPY  ************************************/
-    TRISCbits.RC3 = 0;    // LED2 output (RED)
-    TRISDbits.RD0 = 0;    // LED1 output (GREEN)
+    TRISCbits.RC3 = 0;      // LED2 output (RED)
+    TRISDbits.RD0 = 0;      // LED1 output (GREEN)
+    TRISDbits.RD1 = 1;      // SPI pins as input..
+    TRISDbits.RD2 = 1;      // ..so devces on the same bus...
+    TRISDbits.RD3 = 1;      // ..do not collide.
 
     ANSEL0 = 0b11100010;    // analog input settings
 
@@ -125,15 +128,14 @@ void InitApp(void)
 
 #ifdef SPI_CONTROL
     /***********************   SPI   ******************************************/
-    TRISDbits.RD1 = 0;      // serial data out
-
     CloseSPI();
     SSPBUF = 0x00;
 
     // SSP Interrupt config
     PIR1bits.SSPIF = 0;     // SSP flag clear
     IPR1bits.SSPIP = 0;     // SSP interrupt low priority
-    PIE1bits.SSPIE = 1;     // SSP interrupt enable
+    PIE1bits.SSPIE = 0;     // SSP interrupt DISABLED
+                            // if enabled, causes infinite interrupt loop
 
     //***Configure SPI SLAVE module *****
     sync_mode = SLV_SSOFF;    // DO NOT use Slave Select (against the Bible)
@@ -141,6 +143,7 @@ void InitApp(void)
     smp_phase = SMPMID;
     OpenSPI(sync_mode,bus_mode,smp_phase );
     SSPCONbits.SSPEN = 0;   // turn off SPI until interrupt occurs
+    TRISDbits.RD1 = 1;      // SDO as input so it doesnt conflict
 
     //**********************   INT2  ******************************************/
     // External interrupt for SPI Slave Select line monitoring
@@ -295,6 +298,10 @@ void InitApp(void)
 
     PCPWM_Gen_Period = PWM_GEN_PERIOD;
     PCPWM_Gen_Sptime = 0x01;
+
+    // Start PCPWM clock so interrupts for ADC are generated
+    Openpcpwm(PCPWM_Gen_Config0, PCPWM_Gen_Config1, PCPWM_Gen_Config2,
+            PCPWM_Gen_Config3, PCPWM_Gen_Period, PCPWM_Gen_Sptime);
 
     /* Common config */
     set_dutycycle(0);

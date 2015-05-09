@@ -168,6 +168,8 @@ void main(void)
         }
 #endif
 
+        TX_tab[TX_STATUS_BYTE] = flags_status;
+
     }while(1);
 
 }
@@ -259,7 +261,6 @@ void motor_init(unsigned char direction){
 void regen_init(unsigned char direction) {
     //unsigned char USART_CW_msg[] = "GEN  \r";
     /* TODO Regen braking initialization*/
-    Closepcpwm();
     OVDCOND = 0;
     OVDCONS = 0;
     LATB = 0;
@@ -321,7 +322,6 @@ void free_run_init(){
     PID_TIMER_ON = 0;
     set_dutycycle(0);
 
-    Closepcpwm();
     LATB = 0;
 
     // Change motor mode bits

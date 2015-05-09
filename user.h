@@ -80,7 +80,7 @@ typedef struct {
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
 //#define DEBUG_BATT_VOLTAGE        // UART battery voltage messages
 //#define DEBUG_VELOCITY
-#define INSTANT_START
+//#define INSTANT_START
 
 // SPI
 #define TX_tab_size     9   // 8 data + 1 null terminator

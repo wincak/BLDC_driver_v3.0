@@ -72,10 +72,10 @@ void SPI_request_update (void){
 
 /* Receive new SPI data and store to RX_tab */
 unsigned char Receive_SPI_data(unsigned char length){
-    //unsigned char tmp;
+    unsigned char tmp;
     getsSPI(RX_tab,length);
 
-    //tmp = SSPBUF;
+    tmp = SSPBUF;
 
     return(0);
 }
@@ -87,11 +87,13 @@ unsigned char Transmit_SPI_data(unsigned char length){
                               // (will not be sent)
     FLT_EXT_PORT=1;
     //putsSPI(TX_tab);
+    TRISDbits.RD1 = 0;      // SDO as output
     for(count=0;count<8;count++){
         SSPBUF=TX_tab[count];
         while(!SSPSTATbits.BF  && !SLAVE_SELECT );
     }
 
+    TRISDbits.RD1 = 1;      // SDO as input
     tmp = SSPBUF;   // clear buffer
     FLT_EXT_PORT=0;
 
