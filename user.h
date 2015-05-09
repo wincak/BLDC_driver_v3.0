@@ -74,12 +74,12 @@ typedef struct {
 
 // Debugging outputs
 //#define DEBUG_STATUS    // UART system status messages
-//#define DEBUG_PINS      // turn on debugging output pins
+#define DEBUG_PINS      // turn on debugging output pins
 //#define DEBUG_PID     // UART PID messages
 //#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
 //#define DEBUG_BATT_VOLTAGE        // UART battery voltage messages
-#define DEBUG_VELOCITY
+//#define DEBUG_VELOCITY
 #define INSTANT_START
 
 // SPI
@@ -229,6 +229,9 @@ void motor_init(unsigned char direction);
 void regen_init(unsigned char direction);
 void free_run_init();
 void motor_halt();  // stop motor on error
+
+// SPI
+unsigned char ReadSPI_mod(void);
 
 // Debug
 #ifdef DEBUG_STATUS

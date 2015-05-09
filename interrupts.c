@@ -115,7 +115,7 @@ void interrupt int_high()
         INTCONbits.TMR0IF = 0;
         WriteTimer0(TMR0_1s);
 
-#ifndef UART_CONTROL
+#ifndef SPI_TIMEOUT_DISABLE
         setbit(flags_status,comm_error);  // comm_error flag set
 #endif
 #ifdef DEBUG_STATUS
@@ -132,29 +132,30 @@ void interrupt int_high()
 }
 
 /* Low-priority service */
-void interrupt low_priority int_low()
-{
+void interrupt low_priority int_low() {
     // SPI data exchange
-    if(INTCON3bits.INT2IF && INTCON3bits.INT2IE){
+    if (INTCON3bits.INT2IF && INTCON3bits.INT2IE) {
         INTCON3bits.INT2IF = 0;
+        unsigned char address, tmp;
 
         LED_RED = 1;
+        SSPCONbits.SSPEN = 1;   // turn on SPI
+        SSPBUF=0;
+        while (!SSPSTATbits.BF); // wait for buffer to be full (potential lockup)
+        address = SSPBUF;
 
-        // TODO change SPI receive interrupt routine
+        if (address == SPI_ADDRESS) {
+            // Exchange data
+            Receive_SPI_data(RX_tab_size); // Read SPI data
+            Transmit_SPI_data(TX_tab_size); // Write SPI data
 
-        BF_timeout = 50000;   // Aby se necekalo na naplneni bufferu donekonecna
-        do{                 // timeout nastaven od oka... 50 us
-            if(BF_timeout<=0) break;
-            else BF_timeout--;
-        }while ( !SSPSTATbits.BF );  // cekam na naplneni bufferu
-
-        // Exchange data
-        Receive_SPI_data(RX_tab_size);     // Read SPI data
-        Transmit_SPI_data(TX_tab_size);    // Write SPI data
-
+        }
+        SSPBUF=0;
+        SSPCONbits.SSPEN = 0;   // turn off SPI
+        
         // SPI Communication status okay
-        WriteTimer0(0x0000);                // SPI timeout timer clear
-        clrbit(flags_status,comm_error);    // comm_err flag clear
+        WriteTimer0(0x0000); // SPI timeout timer clear
+        clrbit(flags_status, comm_error); // comm_err flag clear
         LED_GREEN = 1;
 
         LED_RED = 0;

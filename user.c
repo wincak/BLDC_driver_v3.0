@@ -123,7 +123,7 @@ void InitApp(void)
     FLTCONFIGbits.FLTBEN = 1;   // Fault B enable
     FLTCONFIGbits.FLTCON = 1;   // Deactivate all PWMs on fault
 
-#ifndef UART_CONTROL
+#ifdef SPI_CONTROL
     /***********************   SPI   ******************************************/
     TRISDbits.RD1 = 0;      // serial data out
 
@@ -136,10 +136,11 @@ void InitApp(void)
     PIE1bits.SSPIE = 1;     // SSP interrupt enable
 
     //***Configure SPI SLAVE module *****
-    sync_mode = SLV_SSON;    // use Slave Select
+    sync_mode = SLV_SSOFF;    // DO NOT use Slave Select (against the Bible)
     bus_mode = MODE_00;       // send data on rising edge
     smp_phase = SMPMID;
     OpenSPI(sync_mode,bus_mode,smp_phase );
+    SSPCONbits.SSPEN = 0;   // turn off SPI until interrupt occurs
 
     //**********************   INT2  ******************************************/
     // External interrupt for SPI Slave Select line monitoring

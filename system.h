@@ -46,7 +46,7 @@
 //#define CHARGE_BOOTSTRAPS
 
 /* UART control */
-#define UART_CONTROL
+//#define UART_CONTROL
 #ifdef USE_PLL
     #define BAUD_115200     86
 #else
@@ -81,9 +81,9 @@
 #else
     // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz
     #define PWM_MOT_PERIOD  255  // default PWM motoring period
-    #define PWM_GEN_PERIOD  100  // default PWM generator mode period
+    #define PWM_GEN_PERIOD  200  // default PWM generator mode period
     #define DTC_MIN     100     // change!
-    #define DTC_MAX     500     // change!
+    #define DTC_MAX     750     // change!
     #define DTC_STEP    50      // change! (for USART debug)
 #endif
 
@@ -99,6 +99,12 @@
 #define HALL_A      PORTAbits.RA2
 #define HALL_B      PORTAbits.RA3
 #define HALL_C      PORTAbits.RA4
+
+// SPI
+#define SLAVE_SELECT    PORTCbits.RC5
+#define SPI_ADDRESS 0x31    // ASCII: 0x31=='1', 0x32=='2'
+#define SPI_CONTROL
+#define SPI_TIMEOUT_DISABLE
 
 /******************************************************************************/
 /* System Function Prototypes                                                 */

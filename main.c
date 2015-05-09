@@ -219,7 +219,7 @@ void motor_init(unsigned char direction){
     // see commutation_asm.c for more info
     // Note: how about flipping the IC interrupt flag manually here?
     if (direction == CW) { // init CW commutation
-        putsUSART((char *) USART_CW_msg);
+        //putsUSART((char *) USART_CW_msg);
 
         // change motor mode bits
         clrbit(flags_status, 2);
@@ -235,7 +235,7 @@ void motor_init(unsigned char direction){
         else motor_halt(); // error
     
     } else if (direction == CCW) { // init CCW commutation
-        putsUSART((char *) USART_CCW_msg);
+        //putsUSART((char *) USART_CCW_msg);
 
         // change motor mode bits
         clrbit(flags_status, 2);
@@ -284,7 +284,7 @@ void regen_init(unsigned char direction) {
 
     Openpcpwm(PCPWM_Gen_Config0, PCPWM_Gen_Config1, PCPWM_Gen_Config2,
             PCPWM_Gen_Config3, PCPWM_Gen_Period, PCPWM_Gen_Sptime);
-    set_dutycycle(2);
+    set_dutycycle(400);
 
 }
 
@@ -329,52 +329,10 @@ void free_run_init(){
     clrbit(flags_status,1);
     clrbit(flags_status,0);
 
-    putsUSART((char *)USART_free_run_msg);
+    //putsUSART((char *)USART_free_run_msg);
 
 }
 
-/* Decode received SPI data and set request variables */
-void SPI_request_update (void){
-    unsigned char buff = 0;
-
-    /* Load Current request value */
-    // TODO: calculate req_current 8bit-16bit
-    req_current = RX_tab[RX_CURRENT_REQ];
-
-    /* Load motor mode request */
-    // TODO: add regen braking
-    buff = RX_tab[RX_MOTOR_MODE];
-    switch(buff){   // set appropriate motor mode bits
-        case SPI_free_run : {   // free run requested
-            req_motor_mode = mode_free_run; break;
-        }
-        case SPI_CW: {          // motor CW requested
-            req_motor_mode = mode_motor_CW; break;
-        }
-        case SPI_CCW : {         // motor CCW requested
-            req_motor_mode = mode_motor_CCW; break;
-        }
-        default : {             // unknown command
-            req_motor_mode = mode_free_run; motor_halt(); break;
-        }
-    }
-}
-
-/* Receive new SPI data and store to RX_tab */
-unsigned char Receive_SPI_data(unsigned char length){
-    getsSPI(RX_tab,length);
-
-    return(0);
-}
-
-/* Transmit data from TX_tab over SPI */
-unsigned char Transmit_SPI_data(unsigned char length){
-    TX_tab[length] = '\0';    // inserting null terminator at tab's end
-                              // (will not be sent)
-    putsSPI(TX_tab);
-
-    return(0);
-}
 
 /* Read data from A/D tab and calculate real values */
 void calc_ADC_data (void){
@@ -505,37 +463,3 @@ short long UpdatePID(SPid * pid, int error, int measure)
   IO_EXT_PORT = 0;
   return (pTerm + dTerm + iTerm)/10;
 }
-
-#ifdef DEBUG_STATUS
-void debug_status(void){
-        char USART_dbg_msg[15];
-        sprintf(USART_dbg_msg,"\nREQ:%d\n\r",req_current);
-        putsUSART((char *)USART_dbg_msg);
-
-        sprintf(USART_dbg_msg,"STA:%d\n\r",status.current);
-        putsUSART((char *)USART_dbg_msg);
-
-        sprintf(USART_dbg_msg,"DTC:%d\n\r",dutycycle);
-        putsUSART((char *)USART_dbg_msg);
-
-        sprintf(USART_dbg_msg,"M_TEMP:%d C\n\r",status.motor_temp);
-        putsUSART((char *)USART_dbg_msg);
-
-        sprintf(USART_dbg_msg,"T_TEMP:%d C\n\r",status.transistor_temp);
-        putsUSART((char *)USART_dbg_msg);
-
-        sprintf(USART_dbg_msg,"BATT:%d dV\n\r",status.batt_voltage);
-        putsUSART((char *)USART_dbg_msg);
-
-        sprintf(USART_dbg_msg,"Veloc:%d rpm\n\r",60*status.velocity);
-        putsUSART((char *)USART_dbg_msg);
-
-        if(flags_error){
-            char USART_dbg_msg[]="OpCond exceeded!\n\r";
-            putsUSART((char *)USART_dbg_msg);
-        }
-
-        return;
-}
-
-#endif
