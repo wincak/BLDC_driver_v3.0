@@ -35,7 +35,12 @@ extern unsigned int req_current;
 extern unsigned char req_motor_mode;
 extern int req_velocity;
 
+// Status
+extern unsigned int dutycycle;
 
+// Flags
+extern unsigned char flags_status;
+bit flag_SPI_data_rdy = 0;                  // new SPI data recieved
 
 /******************************************************************************/
 /* Communication routines                                                     */
@@ -48,8 +53,11 @@ void SPI_request_update (void){
     unsigned char buff = 0;
 
     /* Load Current request value */
-    // TODO: calculate req_current 8bit-16bit
-    req_current = RX_tab[RX_CURRENT_REQ];
+    // Calculate internal current reference from received value
+    // input value is 0-255 ~ 0-25.5 A, internal is 0-511 ~ 0-25 A
+    req_current = (RX_tab[RX_CURRENT_REQ])<<1;
+    TX_tab[TX_CURRENT_REQ] = RX_tab[RX_CURRENT_REQ];
+
 
     /* Load motor mode request */
     // TODO: add regen braking
@@ -68,14 +76,17 @@ void SPI_request_update (void){
             req_motor_mode = mode_free_run; motor_halt(); break;
         }
     }
+    
+
+    flag_SPI_data_rdy = 0;
 }
 
 /* Receive new SPI data and store to RX_tab */
 unsigned char Receive_SPI_data(unsigned char length){
-    unsigned char tmp;
     getsSPI(RX_tab,length);
 
-    tmp = SSPBUF;
+    SSPBUF = 0;
+    flag_SPI_data_rdy = 1;
 
     return(0);
 }
@@ -98,6 +109,21 @@ unsigned char Transmit_SPI_data(unsigned char length){
     FLT_EXT_PORT=0;
 
     return(0);
+}
+
+void calc_tx_data(void) {
+    float f_tmp;
+    int i_tmp;
+
+    // Calculate dutycycle percentage
+    i_tmp = (PTPERH << 6) | (PTPERL >> 2);
+    f_tmp = i_tmp << 2;
+    f_tmp = dutycycle/(f_tmp / 100);
+    TX_tab[TX_DTC] = (unsigned char) f_tmp;
+
+    // Add status flags to TX_tab
+    TX_tab[TX_STATUS_BYTE] = flags_status;
+
 }
 
 

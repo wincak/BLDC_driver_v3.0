@@ -168,7 +168,8 @@ void main(void)
         }
 #endif
 
-        TX_tab[TX_STATUS_BYTE] = flags_status;
+        calc_tx_data();
+        
 
     }while(1);
 
@@ -343,10 +344,10 @@ void calc_ADC_data (void){
     char Motor_temp;
     char Transistor_temp;
     unsigned char Batt_voltage;
-    int count;
+    signed char count;
 
     /* Load data to buffer tab */
-    for(count=ADC_tab_size; count>0; count--){
+    for(count=ADC_tab_size; count >= 0; count--){
         ADC_buffer[count] = ADC_tab[count];
     }
 
@@ -407,20 +408,30 @@ void calc_ADC_data (void){
 }
 
 /* Check if system condition is within operation limits */
+// SPI timeout is managed by Timer0 interrupt and overcurrent by PID
 char limits_check(void){
+#ifdef CHECK_TEMP
     if(status.motor_temp > M_TEMP_MAX) setbit(flags_status,FLT_T);
     else clrbit(flags_status,FLT_T);
 
     if(status.transistor_temp > T_TEMP_MAX) setbit(flags_status,FLT_T);
     else clrbit(flags_status,FLT_T);
+#endif
 
+#ifdef CHECK_VOLTAGE
     if((status.batt_voltage < V_BATT_MIN) || (status.batt_voltage >V_BATT_MAX))
         setbit(flags_status,FLT_U);
     else clrbit(flags_status,FLT_U);
-    // SPI timeout is managed by Timer0 interrupt and overcurrent by PID
+#endif
 
-    if(flags_error) return(1);
-    else return 0;
+    if(flags_error){
+        LED_RED = 1;
+        return(1);
+    }
+    else{
+        LED_RED = 0;
+        return 0;
+    }
 }
 
 /* Calculate rotation speed from number of rot. hall sensor transitions */
@@ -440,6 +451,7 @@ int calc_velocity(unsigned int transition_count){
     return velocity;
 }
 
+// PID routine
 short long UpdatePID(SPid * pid, int error, int measure)
 {
   short long pTerm, dTerm, iTerm;

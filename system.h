@@ -17,7 +17,7 @@
 
 /* Microcontroller MIPs (FCY) */
 #define _XTAL_FREQ      10000000L   // external crystal frequency
-//#define USE_PLL                     // is PLL switched on?
+#define USE_PLL                     // is PLL switched on?
 
 #ifdef USE_PLL
     #define SYS_FREQ        _XTAL_FREQ*4
@@ -33,8 +33,11 @@
 
 /* ADC condition definitions */
 // Microcontroller input voltage
-//#define VCC     3.3   // fs <= 10MHz only
-#define VCC     4.7       // Use SPI voltage level shift!
+#ifdef USE_PLL
+    #define VCC     4.6       // higher voltage drop on PTC
+#else
+    #define VCC     4.7       // Use SPI voltage level shift!
+#endif
 #define HALL_U_OFFSET   511     // Current Hall Sensor Offset
 #define KELVIN_OFFSET   273     // 0°C ~ 273K
 #define BATT_V_DIVIDER  0.245   // Battery voltage sense divider (3.9/(12+3.9))
@@ -104,7 +107,7 @@
 #define SLAVE_SELECT    PORTCbits.RC5
 #define SPI_ADDRESS     0x31    // ASCII: 0x31=='1', 0x32=='2'
 #define SPI_CONTROL
-#define SPI_TIMEOUT_DISABLE
+//#define SPI_TIMEOUT_DISABLE
 
 /******************************************************************************/
 /* System Function Prototypes                                                 */

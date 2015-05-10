@@ -54,6 +54,7 @@ unsigned char hbuf, lbuf;           // fast ASM decode variables
 unsigned int BF_timeout;
 unsigned int rot_change_count = 0;      // hall sensor transition counter
 unsigned int rot_change_count_buffer = 0; // buffer for storing counter values
+unsigned char SPI_timeout_prescale;
 
 // Requests
 extern unsigned int req_current;
@@ -137,13 +138,14 @@ void interrupt low_priority int_low() {
     if (INTCON3bits.INT2IF && INTCON3bits.INT2IE) {
         INTCON3bits.INT2IF = 0;
         PIR1bits.SSPIF = 0;
-        unsigned char address, timeout;
+        unsigned char address;
+        unsigned int timeout;
 
-        LED_RED = 1;
+        LED_RED = !LED_RED;
         SSPCONbits.SSPEN = 1;   // turn on SPI
         SSPBUF=0;
 
-        timeout = 1000; // wait
+        timeout = 5000; // wait
         while (!SSPSTATbits.BF && timeout > 0){    // wait for buffer to be full (potential lockup)
             timeout--;
         }
@@ -151,25 +153,29 @@ void interrupt low_priority int_low() {
 
         if (address == SPI_ADDRESS) {
             // Exchange data
+            SSPBUF = 0; // clear address from buffer
             Receive_SPI_data(RX_tab_size); // Read SPI data
             Transmit_SPI_data(TX_tab_size); // Write SPI data
 
         }
         SSPBUF=0;
         SSPCONbits.SSPEN = 0;   // turn off SPI
+        LED_RED = !LED_RED;
                 
         // SPI Communication status okay
         WriteTimer0(0x0000); // SPI timeout timer clear
         clrbit(flags_status, comm_error); // comm_err flag clear
         LED_GREEN = 1;
 
-        LED_RED = 0;
     }
     // PID routine
     else if(PIR1bits.TMR1IF && PIE1bits.TMR1IE){
         PIR1bits.TMR1IF = 0;
         WriteTimer1(TMR1_50ms);
-        /* TODO PID regulator */
+
+
+#if 0
+        // PID velocity regulator
 
         if (PID_prescaler == 0) {
             PID_prescaler = 5;
@@ -186,19 +192,20 @@ void interrupt low_priority int_low() {
 #endif
         }
         PID_prescaler--;
-
+#endif
         
-//        // Begin Makeshift linear regulator
-//        if(abs(req_current-status.current) >= 5){ // error big enough?
-//            if(status.current < req_current){ // increase current
-//                if(dutycycle < DTC_MAX)
-//                    set_dutycycle(dutycycle + DTC_STEP);
-//            }
-//            else if (status.current > req_current){  // decrease current
-//                if(dutycycle > DTC_MIN)
-//                    set_dutycycle(dutycycle - DTC_STEP);
-//            }
-//            else set_dutycycle(0);    // something went wrong, abort
+        // Begin Makeshift linear current regulator
+        if(abs(req_current - status.current) >= 5){ // error big enough?
+            if(status.current < req_current){ // increase current
+                if(dutycycle < DTC_MAX)
+                    set_dutycycle(dutycycle + DTC_STEP);
+            }
+            else if (status.current > req_current){  // decrease current
+                if(dutycycle > DTC_MIN)
+                    set_dutycycle(dutycycle - DTC_STEP);
+            }
+            else set_dutycycle(0);    // something went wrong, abort
+
 //
 //#ifdef DEBUG_PID
 //            char USART_dtc_msg[10];
@@ -212,8 +219,8 @@ void interrupt low_priority int_low() {
 //            sprintf(USART_dtc_msg,"DTC:%d\n\r",dutycycle);
 //            putsUSART((char *)USART_dtc_msg);
 //#endif
-//        }
-//
+        }
+
     }
 #ifdef UART_CONTROL
     else if(PIR1bits.RCIF && PIE1bits.RCIE){

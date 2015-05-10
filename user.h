@@ -46,6 +46,13 @@
 #define motor_mode  (flags_status & 0b00000111)
 #define flags_error (flags_status & 0b01111000)
 
+// Error check
+#define CHECK_CURRENT
+//#define CHECK_TEMP
+//#define CHECK_VOLTAGE
+#define CHECK_COMM
+
+
 // Status structure
 typedef struct {
     unsigned int current;
@@ -85,7 +92,7 @@ typedef struct {
 // SPI
 #define TX_tab_size     9   // 8 data + 1 null terminator
 #define TX_DTC              0
-#define TX_CURR_REQ         1
+#define TX_CURRENT_REQ      1
 #define TX_H_CURRENT        2
 #define TX_L_CURRENT        3
 #define TX_TRANSISTOR_TEMP  4
@@ -98,10 +105,10 @@ typedef struct {
 #define RX_MOTOR_MODE       1
 
 #define SPI_free_run    0
-#define SPI_CW          0x08
-#define SPI_CCW         0x01
-#define SPI_regen       0x11    // change this!
-#define SPI_brake       0x12    // this too!
+#define SPI_CW          1
+#define SPI_CCW         2
+#define SPI_regen       5    // change this!
+#define SPI_brake       6    // this too!
 
 // ADC
 #define ADC_tab_size            8
@@ -232,6 +239,7 @@ void motor_halt();  // stop motor on error
 
 // SPI
 unsigned char ReadSPI_mod(void);
+void calc_tx_data(void);
 
 // Debug
 #ifdef DEBUG_STATUS
