@@ -94,10 +94,7 @@ unsigned char Receive_SPI_data(unsigned char length){
 /* Transmit data from TX_tab over SPI */
 unsigned char Transmit_SPI_data(unsigned char length){
     unsigned char count, tmp;
-    TX_tab[length] = '\0';    // inserting null terminator at tab's end
-                              // (will not be sent)
-    FLT_EXT_PORT=1;
-    //putsSPI(TX_tab);
+
     TRISDbits.RD1 = 0;      // SDO as output
     for(count=0;count<8;count++){
         SSPBUF=TX_tab[count];
@@ -106,19 +103,18 @@ unsigned char Transmit_SPI_data(unsigned char length){
 
     TRISDbits.RD1 = 1;      // SDO as input
     tmp = SSPBUF;   // clear buffer
-    FLT_EXT_PORT=0;
 
     return(0);
 }
 
 void calc_tx_data(void) {
-    float f_tmp;
-    int i_tmp;
+    float f_tmp = 0;
+    int i_tmp = 0;
 
     // Calculate dutycycle percentage
-    i_tmp = (PTPERH << 6) | (PTPERL >> 2);
-    f_tmp = i_tmp << 2;
-    f_tmp = dutycycle/(f_tmp / 100);
+    i_tmp = (PTPERH<<8) + PTPERL;   // calculate dutycycle from PWM period
+    i_tmp = (i_tmp << 2);       // now, get the real value from it
+    f_tmp = dutycycle/(i_tmp / 100);
     TX_tab[TX_DTC] = (unsigned char) f_tmp;
 
     // Add status flags to TX_tab

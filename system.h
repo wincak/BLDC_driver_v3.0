@@ -79,7 +79,7 @@
     #define PWM_MOT_PERIOD  0x01FE  // default PWM motoring mode period
     #define PWM_GEN_PERIOD  0x01FE  // default PWM generator mode period
     #define DTC_MIN     200     // change!
-    #define DTC_MAX     1500    // change!
+    #define DTC_MAX     750    // change!
     #define DTC_STEP    100     // change! (for USART debug)
 #else
     // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz
@@ -105,7 +105,7 @@
 
 // SPI
 #define SLAVE_SELECT    PORTCbits.RC5
-#define SPI_ADDRESS     0x31    // ASCII: 0x31=='1', 0x32=='2'
+#define SPI_ADDRESS     0x32    // ASCII: 0x31=='1', 0x32=='2'
 #define SPI_CONTROL
 //#define SPI_TIMEOUT_DISABLE
 
