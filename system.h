@@ -17,7 +17,7 @@
 
 /* Microcontroller MIPs (FCY) */
 #define _XTAL_FREQ      10000000L   // external crystal frequency
-#define USE_PLL                     // is PLL switched on?
+//#define USE_PLL                     // is PLL switched on?
 
 #ifdef USE_PLL
     #define SYS_FREQ        _XTAL_FREQ*4
@@ -79,7 +79,7 @@
     #define PWM_MOT_PERIOD  0x01FE  // default PWM motoring mode period
     #define PWM_GEN_PERIOD  0x01FE  // default PWM generator mode period
     #define DTC_MIN     200     // change!
-    #define DTC_MAX     750    // change!
+    #define DTC_MAX     1200    // change!
     #define DTC_STEP    100     // change! (for USART debug)
 #else
     // Period PWM: 10MHz, 0x00FF, UPDN => 4.7 kHz

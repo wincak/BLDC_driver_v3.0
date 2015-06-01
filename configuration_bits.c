@@ -56,7 +56,7 @@
 // PIC18F4431 Configuration Bit Settings
 
 // CONFIG1H
-#pragma config OSC = HSPLL      // Oscillator Selection bits (HS oscillator)
+#pragma config OSC = HS      // Oscillator Selection bits (HS oscillator)
 #pragma config FCMEN = ON       // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor enabled)
 #pragma config IESO = ON        // Internal External Oscillator Switchover bit (Internal External Switchover mode enabled)
 

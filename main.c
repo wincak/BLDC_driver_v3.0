@@ -37,11 +37,15 @@
 /******************************************************************************/
 
 // Flags
+// Careful! Bit data types are sometimes translated improperly!
 volatile unsigned char flags_status;    // status flag word
-bit flag_stop = 0 ;                         // stop motor
+unsigned char flag_stop = 0 ;                         // stop motor
 bit flag_ADC_data_rdy = 0;                  // ADC conversion complete
 bit flag_SPI_data_rdy = 0;                  // new SPI data recieved
 bit flag_velocity_rdy = 0;                      // velocity meas. ready
+unsigned char rotor_pos = 0;                // actual rotor position
+unsigned char rotor_pos_prev = 0;           // previous rotor position
+unsigned char meas_rot_dir = 0;             // measured rotation direction
 #ifdef DEBUG_STATUS
 bit flag_debug_status = 0;
 #endif
@@ -132,16 +136,15 @@ void main(void)
                 switch (req_motor_mode){    // change motor mode
                     case mode_motor_CW: motor_init(CW); break;
                     case mode_motor_CCW: motor_init(CCW); break;
-                    case mode_regen: check_direction(); break;
-                    // Regen rotation manual set for debug ONLY!
-                    case mode_regen_CW: regen_init(CW); break;
-                    case mode_regen_CCW: regen_init(CCW); break;
+                    case mode_regen: regen_init(meas_rot_dir); break;
                     case mode_free_run: free_run_init(); break;
                     default: motor_halt(); break;
                 }
             }
         }
 
+
+        meas_rot_dir = check_direction();
 
         if(flag_ADC_data_rdy){  // new A/D data?
             calc_ADC_data();
@@ -268,21 +271,33 @@ void regen_init(unsigned char direction) {
     TRISBbits.RB0 = 0;
     TRISBbits.RB2 = 0;
     TRISBbits.RB5 = 0;
+    PID_TIMER_ON = 0;   // TODO: dynamic regen braking dutycycle
 
     if (direction == CW) {
         // change motor mode bits
         setbit(flags_status, 2);
         clrbit(flags_status, 1);
-        setbit(flags_status, 0);
+        clrbit(flags_status, 0);
 
         //putsUSART((char *) USART_CW_msg);
     } else if (direction == CCW) {
         // change motor mode bits
         setbit(flags_status, 2);
-        setbit(flags_status, 1);
+        clrbit(flags_status, 1);
         clrbit(flags_status, 0);
-        
-    } else motor_halt();
+
+    } else if (direction == 0) {
+        // unknown rotation direction. play it like everything is OK..
+        //change motor mode bits
+        setbit(flags_status, 2);
+        clrbit(flags_status, 1);
+        clrbit(flags_status, 0);
+        return;
+    } else
+    {
+        motor_halt();
+        return;
+    }
 
     Openpcpwm(PCPWM_Gen_Config0, PCPWM_Gen_Config1, PCPWM_Gen_Config2,
             PCPWM_Gen_Config3, PCPWM_Gen_Period, PCPWM_Gen_Sptime);
@@ -290,28 +305,41 @@ void regen_init(unsigned char direction) {
 
 }
 
-// This is NOT WORKING now, direction must be set manually.
-// quite tricky to find it out automatically....
-/* Before regenerative braking starts, rotation direction must be known */
-void check_direction(void){
-    // WARN! This routine will be quite messy if the motor gets locked...
-    unsigned char position_buffer;
-
-    while(status.velocity < 5);     // waiting for rotation
-
-    while ((PORTA & HALL_MASK) != 0b00010000); // wait for position 1
-
-    while((PORTA & HALL_MASK) == 0b00010000); // wait for next position
-
-    position_buffer = PORTA & HALL_MASK;   // read second value
-
-    if(position_buffer == 0b00011000)      // is position 2 the next?
-        regen_init(CW);
-    else if(position_buffer == 0b00010100) // how about position 6?
-        regen_init(CCW);
-    else motor_halt();  // must be an error
-
-    return;
+/* Check rotation direction from rotor position change */
+unsigned char check_direction(void){
+    if(rotor_pos == rotor_pos_prev) // no movement
+        return 0;
+    // check rotor position change.
+    // decode rotation only for one step change!
+    // this problem really is much trickier than expected...
+    switch (rotor_pos){
+        case 0: return 0;
+        case 1: {
+            if(rotor_pos_prev == 2) return 2;
+            if(rotor_pos_prev == 6) return 1;
+        }
+        case 2: {
+            if(rotor_pos_prev == 3) return 2;
+            if(rotor_pos_prev == 1) return 1;
+        }
+        case 3: {
+            if(rotor_pos_prev == 4) return 2;
+            if(rotor_pos_prev == 2) return 1;
+        }
+        case 4: {
+            if(rotor_pos_prev == 5) return 2;
+            if(rotor_pos_prev == 3) return 1;
+        }
+        case 5: {
+            if(rotor_pos_prev == 6) return 2;
+            if(rotor_pos_prev == 4) return 1;
+        }
+        case 6: {
+            if(rotor_pos_prev == 1) return 2;
+            if(rotor_pos_prev == 5) return 1;
+        }
+        default: return 0;
+    }
 }
 
 /* Switch motor to free run mode */

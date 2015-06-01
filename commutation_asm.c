@@ -44,6 +44,8 @@ unsigned char set_HC = 0b00100000;
 
 extern unsigned char flags_status;
 extern unsigned char hall_cur;
+extern unsigned char meas_rot_dir;
+
 
 /******************************************************************************/
 /* User Functions                                                             */
@@ -162,7 +164,7 @@ void commutate_gen(void) {
 #asm
 
 gen_cw:
-btfsc   _flags_status,1  ; Motor mode xx1 ?
+btfsc   _meas_rot_dir,1  ; Rotation direction xx1 ?
     bra gen_ccw         ; reverse
 
 gen1:

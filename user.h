@@ -107,8 +107,8 @@ typedef struct {
 #define SPI_free_run    0
 #define SPI_CW          1
 #define SPI_CCW         2
-#define SPI_regen       5    // change this!
-#define SPI_brake       6    // this too!
+#define SPI_regen       4    // regenerative braking
+#define SPI_brake       6    // change this!
 
 // ADC
 #define ADC_tab_size            8
@@ -216,7 +216,7 @@ void calc_ADC_data (void);
 
 // Condition check
 char limits_check(void);
-void check_direction(void);
+unsigned char check_direction(void);
 
 // Dutycycle
 void set_dutycycle (unsigned int dtc);

@@ -72,6 +72,9 @@ void SPI_request_update (void){
         case SPI_CCW : {         // motor CCW requested
             req_motor_mode = mode_motor_CCW; break;
         }
+        case SPI_regen : {      // regenerative braking
+            req_motor_mode = mode_regen; break;
+        }
         default : {             // unknown command
             req_motor_mode = mode_free_run; motor_halt(); break;
         }

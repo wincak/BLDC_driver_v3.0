@@ -66,6 +66,16 @@ extern SPid PID_status;
 unsigned int drive = 0;
 unsigned char PID_prescaler;
 
+// Rotor position decode
+unsigned char hall_pos_curr;
+extern unsigned char hall_pos1;
+extern unsigned char hall_pos2;
+extern unsigned char hall_pos3;
+extern unsigned char hall_pos4;
+extern unsigned char hall_pos5;
+extern unsigned char hall_pos6;
+extern unsigned char rotor_pos;
+extern unsigned char rotor_pos_prev;
 
 /******************************************************************************/
 /* Interrupt Routines                                                         */
@@ -83,10 +93,20 @@ void interrupt int_high()
             case mode_free_run: break;                   // motor off
             case mode_motor_CW: commutate_mot(); break;  // motoring
             case mode_motor_CCW: commutate_mot(); break;
-            case mode_regen_CW: commutate_gen(); break;  // generating
-            case mode_regen_CCW: commutate_gen(); break;
+            case mode_regen: commutate_gen(); break;  // generating
             default: motor_halt(); break;                // error, stop
         }
+
+        // Check rotor position
+        hall_pos_curr = PORTA & HALL_MASK;
+        rotor_pos_prev = rotor_pos;
+        if(hall_pos_curr == hall_pos1) rotor_pos = 1;
+        else if(hall_pos_curr == hall_pos2) rotor_pos = 2;
+        else if(hall_pos_curr == hall_pos3) rotor_pos = 3;
+        else if(hall_pos_curr == hall_pos4) rotor_pos = 4;
+        else if(hall_pos_curr == hall_pos5) rotor_pos = 5;
+        else if(hall_pos_curr == hall_pos6) rotor_pos = 6;
+        else rotor_pos = 0;
 
         rot_change_count++;
 
