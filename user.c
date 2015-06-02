@@ -119,12 +119,12 @@ void InitApp(void)
 #endif
 
     /********************    FAULT CONFIG  ************************************/
-    FLTCONFIGbits.BRFEN = 1;    // Fault condition on breakpoint
-                                // odpoji vystupy pri breakpointu, dulezity pro
-                                // debugging
-    FLTCONFIGbits.FLTBMOD = 1;  // FLTB cleared automatically
-    FLTCONFIGbits.FLTBEN = 1;   // Fault B enable
-    FLTCONFIGbits.FLTCON = 1;   // Deactivate all PWMs on fault
+    // Fault condition on breakpoint (important when debugging)
+    // FLTB cleared automatically
+    // Fault B enable
+    // Deactivate all PWMs on fault
+    FLTCONFIG = 0b10111000;
+    // Do not set this bit by bit!
 
 #ifdef SPI_CONTROL
     /***********************   SPI   ******************************************/

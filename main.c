@@ -301,7 +301,7 @@ void regen_init(unsigned char direction) {
 
     Openpcpwm(PCPWM_Gen_Config0, PCPWM_Gen_Config1, PCPWM_Gen_Config2,
             PCPWM_Gen_Config3, PCPWM_Gen_Period, PCPWM_Gen_Sptime);
-    set_dutycycle(400);
+    set_dutycycle(750);
 
 }
 

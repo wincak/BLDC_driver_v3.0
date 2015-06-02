@@ -81,7 +81,7 @@ typedef struct {
 
 // Debugging outputs
 //#define DEBUG_STATUS    // UART system status messages
-#define DEBUG_PINS      // turn on debugging output pins
+//#define DEBUG_PINS      // turn on debugging output pins
 //#define DEBUG_PID     // UART PID messages
 //#define DEBUG_TRANSISTOR_TEMP     // UART trans. temperature messages
 //#define DEBUG_MOTOR_TEMP          // UART motor temperature messages
