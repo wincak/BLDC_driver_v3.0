@@ -121,9 +121,9 @@ void InitApp(void)
     /********************    FAULT CONFIG  ************************************/
     // Fault condition on breakpoint (important when debugging)
     // FLTB cleared automatically
-    // Fault B enable
+    // Fault B DISABLE! ACS711 latches fault output on overcurrent!
     // Deactivate all PWMs on fault
-    FLTCONFIG = 0b10111000;
+    FLTCONFIG = 0b10101000;
     // Do not set this bit by bit!
 
 #ifdef SPI_CONTROL
